@@ -11,7 +11,7 @@ for(const name of names){
   const limit=name==='island-v132'?1100:name==='chief-v13'?640:name==='ocean-v2'?512:machineAssets.includes(name)||['raft-v4','tower-v4'].includes(name)?640:768;
   await sharp(path.join(root,'assets',name+'.png')).resize({width:limit,height:limit,fit:'inside',withoutEnlargement:true}).png({palette:true,colours:128,dither:0.5,compressionLevel:9}).toFile(path.join(out,'assets',name+'.png'));
 }
-const config=JSON.parse(fs.readFileSync(path.join(root,'project.config.json')));config.projectname='这片海我包了';config.description='v1.4.0 海上经营小游戏';config.packOptions={ignore:[],include:[]};fs.writeFileSync(path.join(out,'project.config.json'),JSON.stringify(config,null,2));
+const config=JSON.parse(fs.readFileSync(path.join(root,'project.config.json')));config.projectname='这片海我包了';config.description='v1.3.3 海上经营小游戏';config.packOptions={ignore:[],include:[]};fs.writeFileSync(path.join(out,'project.config.json'),JSON.stringify(config,null,2));
 function size(dir){return fs.readdirSync(dir,{withFileTypes:true}).reduce((n,f)=>n+(f.isDirectory()?size(path.join(dir,f.name)):fs.statSync(path.join(dir,f.name)).size),0)}
 const bytes=size(out);console.log(JSON.stringify({out,bytes,MiB:bytes/1048576,images:names.length}));if(bytes>4*1024*1024)throw new Error('Build exceeds conservative 4 MiB budget');
 })().catch(e=>{console.error(e);process.exitCode=1});

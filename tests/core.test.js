@@ -173,23 +173,3 @@ test('all camp projects are reachable through normal production and trade', () =
   assert.equal(s.camp.stage,3);assert.ok(C.valid(s));
   assert.equal(C.deserialize(C.serialize(s),s.lastTick).camp.stage,3);
 });
-
-test('sneeze migration, gating, three endings and repeat completion are safe',()=>{
- const s=village();delete s.sneeze;const old=C.deserialize(C.serialize(s),START);assert.deepEqual(old.sneeze,C.sneezeFresh());
- assert.equal(C.act(old,{type:'sneezeBegin',manual:true},START).ok,false);
- old.camp.stage=3;old.home.rooms=C.ROOMS.map(r=>r.id);old.home.resident=true;const resources={...old.resources};
- assert.equal(C.sneezeReady(old,START),false);old.sneeze.activity=4;assert.equal(C.sneezeReady(old,START),true);
- for(const choice of [0,1,2,0]){
-  assert.equal(C.act(old,{type:'sneezeBegin',manual:true},START).ok,true);
-  assert.equal(C.act(old,{type:'sneezeFinish'},START).ok,false);
-  assert.equal(C.act(old,{type:'sneezeChoose',choice:99},START).ok,false);
-  assert.equal(C.act(old,{type:'sneezeChoose',choice},START).ok,true);
-  assert.ok(C.deserialize(C.serialize(old),START));
-  assert.equal(C.act(old,{type:'sneezeChoose',choice:1},START).ok,false);
-  assert.equal(C.act(old,{type:'sneezeFinish'},START).ok,true);
-  assert.equal(C.act(old,{type:'sneezeFinish'},START).ok,false);
- }
- assert.deepEqual(old.sneeze.seen,[0,1,2]);assert.deepEqual(old.resources,resources);
- old.sneeze.activity=4;assert.equal(C.sneezeReady(old,START+179999),false);assert.equal(C.sneezeReady(old,START+180000),true);
- old.sneeze.seen=[0,0];assert.equal(C.deserialize(C.serialize(old),START),null);
-});

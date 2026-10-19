@@ -555,16 +555,10 @@
     let y = (type === 'portrait' || type === 'crew' || type === 'camp' || type === 'rooms' || type === 'salvager' || type === 'source') ? 230 : type === 'build' ? 308 : type === 'welcome' ? 246 : type === 'settings' ? 340 : 398;
     if(['story','author','decor','visitor','interact'].includes(type))y=215;
     if(type==='skyRoom')y=215;
-    if(type==='islandMap'||type==='sneezeAlbum')y=215;
+    if(type==='islandMap')y=215;
     if(['tales','episode','antic'].includes(type))y=185;
     const h = 814 - y; panel(14, y, 362, h); rr(173, y + 10, 44, 4, 2, '#d3dfd0');
     if (type !== 'welcome') { text('×', 348, y + 34, 24, C.mute, '400', 'center'); hit(326, y + 15, 44, 44, { kind: 'close' }, '关闭弹窗'); }
-    if(type==='sneezeAlbum'){
-      text('鲨鱼趣闻 · 一楼一场闹剧',35,260,21,C.ink,'800');text('换一种办法，看看整栋楼怎么回应',35,294,13,C.teal);
-      Core.SNEEZE_ENDINGS.forEach((e,i)=>{const y=329+i*107,seen=state.sneeze.seen.includes(i);rr(31,y,328,92,12,seen?'#dce9d9':'#eee5d0');text(seen?e.name:'未见结局 · '+['床单','铃声','随它去'][i],45,y+25,17,C.ink,'700');text(seen?'纪念：'+e.keepsake:'亲自试一种处理方式来发现',45,y+58,12,C.teal);});
-      if(Core.sneezeUnlocked(state))button(35,727,320,48,'让鲨鱼再胡闹一次',{kind:'sneezeStart'},'primary');else wrap('鲨鱼海楼建成、屋顶修好后开启。',35,733,310,14,C.teal,23);
-      return;
-    }
     if(type==='islandMap'){
       text('海图 · 岛屿手记',35,259,23,C.ink,'800');
       text('已发现的岛屿随时可回访 · 不消耗物资',35,294,12,C.teal);
@@ -707,7 +701,7 @@
       wrap('设备暂存之外，还有独立的离线补给箱。满仓未领取的补给会保留；手动加工只完成已投料的一批。', 35, y + 286, 315, 12, C.mute, 22);
       button(35,690,320,34,'统一收取补给',{kind:'action',action:{type:'collectAll'}},'primary');button(35,746,320,44,'看看我的家园',{kind:'close'},'secondary');
     } else if (type === 'settings') {
-      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.4.0', 35, y + 74, 127);
+      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.3.3', 35, y + 74, 127);
       wrap('这是一个本地经营原型。设备自然生产、供电加速、商船订单、扩建和升级均可游玩。', 35, y + 121, 314, 14, C.mute, 25);
       wrap('进度只保存在当前设备的本地存储。尚未接入账号、云存档、广告或支付。仓库每种资源上限 500。', 35, y + 213, 314, 13, C.mute, 23);
       button(35,643,320,28,state.life.sound?'音效：开启':'音效：关闭',{kind:'action',action:{type:'sound'}},'secondary');
@@ -744,7 +738,7 @@
   function towerScene(Core,state,ui,t,now){
     const top=Core.towerTop(state),reach=Core.towerReach(state),focus=Math.min(reach,Math.max(1,ui.floor||top)),full=ui.towerOverview||ui.photo,camera=towerCamera(Core,state,ui);
     const active=ui.roomEffect&&ui.roomEffect.until>now?ui.roomEffect.id:null;
-    if(!ui.photo){button(267,133,108,29,'鲨鱼趣闻',{kind:'sneezeAlbum'},'secondary');text('这栋海楼我盖了',20,148,18,'#fff1ce','800');text(full?'整栋全景 · 等比例展示':'拖动画面看整栋 · 点房间直接互动',20,172,11,'#cbece6');}
+    if(!ui.photo){text('这栋海楼我盖了',20,148,18,'#fff1ce','800');text(full?'整栋全景 · 等比例展示':'拖动画面看整栋 · 点房间直接互动',20,172,11,'#cbece6');}
     const first=hits.length;ctx.save();ctx.beginPath();ctx.rect(12,184,330,369);ctx.clip();
     const {scale,ox,oy,levels}=camera;
     ctx.translate(ox,oy);ctx.scale(scale,scale);
@@ -752,12 +746,6 @@
     // The hull, structural wall and roof share one world-space camera.
     if(assets.shark){ctx.save();ctx.beginPath();ctx.rect(-15,base-8,350,158);ctx.clip();ctx.drawImage(assets.shark,-15,base-195,350,350);ctx.restore();}
     else{ellipse(154,base+55,170,65,'#658e90','#e4b875');poly([[0,base+45],[20,base+98],[90,base+100]],'#d9d0aa');ellipse(64,base+42,10,10,'#ffdb80');}
-    if(ui.sneezeRender){
-      const hold=ui.sneezeRender==='hold',itch=ui.sneezeRender==='itch';
-      line([[30,base+33],[40,base+(hold?28:36)],[51,base+33]],'#344b4a',4);
-      if(hold)ellipse(72,base+61,23,17,'#9dc0af99','#d8cba2');
-      if(itch)for(let j=0;j<3;j++)line([[5-j*7,base+45-j*7],[-3-j*7,base+39-j*7]],'#fff1b7',2);
-    }
     rr(-5,base-9,322,18,2,'#a97742','#f0c77f');
     for(let j=0;j<8;j++)line([[8+j*41,base-8],[8+j*41,base+6]],'#5e4836',2);
     rr(5,80,300,levels*126,1,'#294c4d');
@@ -936,7 +924,7 @@
         hit(30,y,330,78,{kind:'episodeOpen',index:i},e.name);
       });
       const i=Core.nextAntic(state);button(35,564,320,40,'随手一玩 · '+Core.ANTICS[i][0],{kind:'anticOpen',index:i},'primary');
-      button(35,610,320,29,'鲨鱼趣闻',{kind:'sneezeAlbum'},'secondary');
+      text('趣事收藏 '+state.tales.seen.length+'/8 · 点击名字重看',35,632,12,C.teal);
       state.tales.seen.forEach((a,j)=>button(35+(j%2)*164,650+Math.floor(j/2)*30,156,25,Core.ANTICS[a][0],{kind:'anticOpen',index:a},'secondary'));
       return;
     }
@@ -1082,66 +1070,9 @@
     text('T I D E H A V E N  ·  1 . 2',195,726,10,'#b7d7d2','500','center');
     if(!ui.photoClean){button(18,778,104,42,'退出拍照',{kind:'photoExit'},'secondary');button(143,778,104,42,'换个姿势',{kind:'photoPose'},'secondary');button(268,778,104,42,'保存照片',{kind:'photoSave'},'primary');}
   }
-  function sneezeCloth(x,y,w,h,inflated){
-    ctx.save();ctx.translate(x,y);poly([[-w/2,0],[0,inflated?-h*.3:4],[w/2,0],[w*.43,h],[0,h+(inflated?8:0)],[-w*.43,h]],'#fff0ca','#a9beb5');
-    for(let j=-1;j<=1;j++)line([[j*w*.2,8],[j*w*.23,h-4]],'#c4cfc0',1.5);ctx.restore();
-  }
-  function sneezeScene(Core,state,ui,t,now){
-    const e=ui.sneeze,choice=e.choice,playing=e.phase==='play',warn=e.phase==='warn',result=e.phase==='result';
-    const duration=ui.reducedMotion?4500:9000,p=playing?Math.min(1,(now-e.started)/duration):result?1:0,stage=Math.min(2,Math.floor(p*3)),local=(p*3)%1;
-    const end=Core.SNEEZE_ENDINGS[choice||0],motion=ui.reducedMotion?0:Math.sin(t*13),title=warn?'它好像……要打喷嚏了':result?end.name:['全楼注意，床单准备！','铃响了，大家接住！','阿嚏——自由发挥！'][choice];
-    text('这片海我包了 · 鲨鱼趣闻',195,42,15,'#cfece4','600','center');text(title,195,79,23,'#fff0c3','800','center');
-    text(warn?'拖床单到鼻尖，或点下面的处理方式':result?'不扣物资 · 趣闻与纪念物已收藏':'一个小动作，整栋楼一起回应',195,112,12,'#c6e7dd','400','center');
-    const count=hits.length;ctx.save();ctx.translate(0,-10+(playing?motion*1.7:0));
-    towerScene(Core,state,Object.assign({},ui,{photo:true,towerOverview:true,sneezeRender:warn?'itch':choice===0?'hold':p<.4?'sneeze':'relief'}),t,now);
-    ctx.restore();hits.splice(count);
-    const cam=towerCamera(Core,state,{photo:true}),base=80+cam.levels*126,head={x:cam.ox+40*cam.scale,y:cam.oy+(base+45)*cam.scale-10},roof={x:177,y:cam.oy+55*cam.scale-10},middle={x:177,y:cam.oy+(80+(cam.levels-Math.min(3,cam.levels))*126+65)*cam.scale-10};
-    if(warn){
-      const fy=head.y-32+(ui.reducedMotion?0:Math.sin(t*2)*9);line([[head.x-30,fy-22],[head.x,fy+7]],'#fff6d7',3);for(let i=0;i<5;i++)line([[head.x-28+i*5,fy-18+i*5],[head.x-11+i*4,fy-23+i*4]],'#d3e7df',2);
-      text('哈……哈……',head.x+20,head.y+40,15,'#fff2be','800','center');
-      ctx.save();ctx.setLineDash([4,5]);ellipse(142,520,48,34,null,'#ffe6a2');ctx.restore();
-      const d=ui.sneezeDrag;sneezeCloth(d?d.x:70,d?d.y:300,68,50,false);if(!d)text('床单',70,368,12,'#ffefc6','700','center');hit(30,280,80,90,{kind:'sneezeCloth'},'拖床单到鲨鱼鼻子');
-      crewSprite(state.life.author?'crewAuthor':'crewTank',308,485,115,true,t);
-    }
-    if(playing||result){
-      const current=result?2:stage;
-      // Each branch moves different props through the same building, in three readable beats.
-      if(choice===0){
-        if(current===0){sneezeCloth(head.x-10,head.y-15,75+local*18,40,true);text('憋——住！',head.x,head.y+45,15,'#fff1bb','800','center');}
-        if(current===1){if(state.buildings.some(b=>b.type==='puffer'))machine('puffer',284,middle.y+45,.65+local*.15,t,false);else sneezeCloth(284,middle.y,48,33,true);sneezeCloth(183,middle.y-28,60+local*25,35,true);text('它也鼓起来了！',280,middle.y+63,11,'#fff0c0','700','center');}
-        if(current===2){line([[177,roof.y+25],[177,roof.y-57]],'#a67c4c',4);sneezeCloth(177,roof.y-52,105,58,true);crewSprite('crewTank',296,480,112,true,t);text('我们要起飞了吗？',278,501,12,'#ffefbe','700','center');}
-      }else if(choice===1){
-        if(current===0){decorSprite('dinnerBell',96,middle.y,64,t,true);text('叮！都准备好！',100,middle.y+38,12,'#fff2be','700','center');crewSprite('crewBoss',295,470,105,true,t);}
-        if(current===1){const x=65+local*180,y=head.y-(head.y-roof.y)*local-65*Math.sin(local*Math.PI);icon('fish',x,y,36);line([[75,head.y-10],[125,middle.y],[210,roof.y+10]],'#d9f7ef88',3);line([[217,roof.y-8],[244,roof.y+15],[210,roof.y+40]],'#ead69d',2);}
-        if(current===2){crewSprite('crewBoss',290,480,120,true,t);icon('fish',281,403,38);text(state.home.rooms.includes('kitchen')?'卷姨：今晚加菜！':'飞鱼接住了，先借个锅！',272,509,12,'#fff2be','700','center');}
-      }else{
-        if(current===0){for(let j=0;j<7;j++)ellipse(head.x-15-j*5,head.y-15-j*5,4+j%3,5,'#dff8ee');text('阿——嚏！',head.x+30,head.y+43,20,'#fff0b8','800','center');}
-        if(current===1){const x=160+Math.sin(local*4)*50,y=middle.y-130*Math.sin(local*Math.PI);ellipse(x,y,9,19,'#c89c63','#6c6250');line([[x-6,y-4],[x,y+6],[x+6,y-4]],'#75a8a0',3);for(let j=0;j<7;j++)ellipse(200+j*5,middle.y-25-local*70+j*4,4,4,'#fff5dc');}
-        if(current===2){crewSprite(state.life.author?'crewAuthor':'crewWire',288,480,115,true,t);rr(254,407,29,35,5,'#d7b583','#754f36');ellipse(269,406,15,5,'#fff6df');text(state.life.author?'阿昊：这杯谁调的？！':'阿线：泡沫怎么上天了？！',270,510,12,'#fff2be','700','center');}
-      }
-      if(playing){
-        const captions=[['鼻子憋住了，床单开始鼓风','气流顺着楼层往上跑，鼓起一串惊喜','屋顶多了一张帆，全楼抓紧栏杆'],['铃声沿着楼层传上去，居民各就各位','喷嚏掀起水花，飞鱼冲向屋顶','接住！厨房多了一道海风加餐'],['喷嚏从鲨鱼鼻尖炸开','拖鞋和泡沫经过楼层，居民伸手接','杯子接住了泡沫，味道成了一个谜']];
-        rr(20,560,350,47,12,'#143e4ce8');wrap(captions[choice][stage],34,578,324,13,'#fff2cc',18);
-        for(let j=0;j<3;j++)ellipse(164+j*31,624,5,5,j<=stage?'#ffd276':'#8baba7');
-      }
-    }
-    if(warn){
-      button(24,645,342,45,'用床单帮它憋住',{kind:'sneezeChoose',choice:0},'primary');
-      button(24,704,342,45,'摇铃，让全楼准备',{kind:'sneezeChoose',choice:1},'primary');
-      button(24,763,342,45,'看看会怎样',{kind:'sneezeChoose',choice:2},'secondary');
-    }else if(result){
-      rr(16,560,358,166,14,'#fff3d7');text('趣闻纪念 · '+end.keepsake,34,585,17,C.ink,'800');wrap(end.line,34,615,321,14,C.ink,23);
-      text('已看结局 '+state.sneeze.seen.length+'/3 · 重演不重复发资源',34,701,11,C.teal);
-      button(24,750,163,49,'再试另一种办法',{kind:'sneezeAgain'},'primary');button(199,750,167,49,'回到我的海楼',{kind:'sneezeExit'},'secondary');
-    }else{
-      text('居民们忙着接东西，你的物资不会减少',195,699,12,'#d7eee5','400','center');
-      if(state.sneeze.seen.includes(choice))button(75,755,240,42,'跳过已看演出',{kind:'sneezeSkip'},'secondary');
-    }
-  }
   function draw(context, Core, state, ui, t, now) {
     ctx = context; hits = []; frameUi = ui; frameNow = now; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 390, 844); ctx.clip();
     drawSea(t);
-    if(ui.sneeze){sneezeScene(Core,state,ui,t,now);if(ui.modal)modal(Core,state,ui,now);ctx.restore();return hits;}
     if(ui.photo){photoScene(Core,state,ui,t,now);ctx.restore();return hits;}
     if(ui.islandScene){
       islandVisitScene(Core,state,ui,t,now);

@@ -177,33 +177,3 @@ test('sea chart revisits a completed legacy island immediately with progress int
  assert.deepEqual(h.app.snapshot().island.choices,[0,1,0]);assert.equal(h.app.snapshot().island.nextAt,0);
  h.click('告别岛主 · 继续航行');h.click('跳过航行动画');h.click('回访基博岛 · 随时');assert.equal(h.app.snapshot().island.docked,true);
 });
-
-function sneezeHome(){const s=Core.fresh(1700000000000);s.introSeen=true;s.camp.stage=3;s.home.rooms=Core.ROOMS.map(r=>r.id);s.home.resident=true;s.tower.rooms=Core.SKY_ROOMS.map(r=>r.id);return s;}
-test('all three sneeze branches complete, replay and preserve tower camera and resources',()=>{
- const s=sneezeHome(),h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]));
- h.click('5F');const floor=h.app.uiSnapshot().floor,resources=h.app.snapshot().resources;
- h.click('鲨鱼趣闻');h.click('让鲨鱼再胡闹一次');
- for(const label of ['用床单帮它憋住','摇铃，让全楼准备','看看会怎样']){
-  h.click(label);assert.equal(h.app.uiSnapshot().sneeze.phase,'play');h.tick(9100);assert.equal(h.app.uiSnapshot().sneeze.phase,'result');
-  if(label!=='看看会怎样')h.click('再试另一种办法');
- }
- assert.deepEqual(h.app.snapshot().sneeze.seen,[0,1,2]);h.click('回到我的海楼');assert.equal(h.app.uiSnapshot().floor,floor);assert.deepEqual(h.app.snapshot().resources,resources);
-});
-test('automatic sneeze defers while a modal or pointer is active, then resumes saved branch',()=>{
- const s=sneezeHome();s.sneeze.activity=4;const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]),false,true);
- h.click('鲨鱼趣闻');h.tick(46000);assert.equal(h.app.uiSnapshot().sneeze,null);h.click('关闭弹窗');
- // Closing the modal permits the ready event on the next frame.
- assert.equal(h.app.uiSnapshot().sneeze.phase,'warn');h.click('摇铃，让全楼准备');
- const restored=harness(h.storage);assert.equal(restored.app.uiSnapshot().sneeze.choice,1);restored.tick(9200);assert.deepEqual(restored.app.snapshot().sneeze.seen,[1]);
-});
-test('bedsheet drag cancels outside nose and chooses branch zero at target',()=>{
- const h=harness(new Map([[App.SAVE_KEY,Core.serialize(sneezeHome())]]),false,true);h.click('鲨鱼趣闻');h.click('让鲨鱼再胡闹一次');
- for(const target of [[350,200],[142,520]]){h.callbacks.gesture({phase:'start',x:70,y:310});h.callbacks.gesture({phase:'move',x:target[0],y:target[1]});h.callbacks.gesture({phase:'end',x:target[0],y:target[1]});h.tick(100);if(target[0]===350)assert.equal(h.app.uiSnapshot().sneeze.phase,'warn');}
- assert.equal(h.app.uiSnapshot().sneeze.choice,0);
-});
-test('ready sneeze waits for a held pointer; hiding pauses the performance clock',()=>{
- const s=sneezeHome();s.sneeze.activity=4;const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]),false,true);
- h.callbacks.gesture({phase:'start',x:120,y:350});h.tick(46000);assert.equal(h.app.uiSnapshot().sneeze,null);
- h.callbacks.gesture({phase:'cancel'});h.tick(100);assert.equal(h.app.uiSnapshot().sneeze.phase,'warn');h.click('看看会怎样');
- h.callbacks.hide();h.tick(3000);h.callbacks.show();h.tick(100);assert.equal(h.app.uiSnapshot().sneeze.phase,'play');h.tick(9000);assert.equal(h.app.uiSnapshot().sneeze.phase,'result');
-});
