@@ -555,9 +555,20 @@
     let y = (type === 'portrait' || type === 'crew' || type === 'camp' || type === 'rooms' || type === 'salvager' || type === 'source') ? 230 : type === 'build' ? 308 : type === 'welcome' ? 246 : type === 'settings' ? 340 : 398;
     if(['story','author','decor','visitor','interact'].includes(type))y=215;
     if(type==='skyRoom')y=215;
+    if(type==='islandMap')y=215;
     if(['tales','episode','antic'].includes(type))y=185;
     const h = 814 - y; panel(14, y, 362, h); rr(173, y + 10, 44, 4, 2, '#d3dfd0');
     if (type !== 'welcome') { text('×', 348, y + 34, 24, C.mute, '400', 'center'); hit(326, y + 15, 44, 44, { kind: 'close' }, '关闭弹窗'); }
+    if(type==='islandMap'){
+      text('海图 · 岛屿手记',35,259,23,C.ink,'800');
+      text('已发现的岛屿随时可回访 · 不消耗物资',35,294,12,C.teal);
+      rr(35,317,320,290,15,'#c9e4dc');
+      if(assets.islandVillage){const im=assets.islandVillage,k=255/im.height;ctx.drawImage(im,195-im.width*k/2,330,im.width*k,255);}
+      text('基博岛',35,634,21,C.ink,'800');
+      text(state.island.visits?(state.island.choices.length===3?'自由串门 · 澡堂已修好，感谢旗已收藏':'故事进行中 · 随时回来接着玩'):'待探索 · 建好灯塔后可以靠岸',35,669,13,C.teal);
+      if(state.home.rooms.includes('lookout'))button(35,735,320,45,state.island.docked?'回到岛上':state.island.visits?'立即回访基博岛':'前往基博岛',{kind:'island'},'primary');
+      return;
+    }
     if(type==='skyRoom'){skyRoomModal(Core,state,ui,now);return;}
     if(['tales','episode','antic'].includes(type)){talesModal(Core,state,ui,now);return;}
     if(['story','author','decor','visitor','interact'].includes(type)){lifeModal(Core,state,ui,now);return;}
@@ -690,7 +701,7 @@
       wrap('设备暂存之外，还有独立的离线补给箱。满仓未领取的补给会保留；手动加工只完成已投料的一批。', 35, y + 286, 315, 12, C.mute, 22);
       button(35,690,320,34,'统一收取补给',{kind:'action',action:{type:'collectAll'}},'primary');button(35,746,320,44,'看看我的家园',{kind:'close'},'secondary');
     } else if (type === 'settings') {
-      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.3.2', 35, y + 74, 127);
+      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.3.3', 35, y + 74, 127);
       wrap('这是一个本地经营原型。设备自然生产、供电加速、商船订单、扩建和升级均可游玩。', 35, y + 121, 314, 14, C.mute, 25);
       wrap('进度只保存在当前设备的本地存储。尚未接入账号、云存档、广告或支付。仓库每种资源上限 500。', 35, y + 213, 314, 13, C.mute, 23);
       button(35,643,320,28,state.life.sound?'音效：开启':'音效：关闭',{kind:'action',action:{type:'sound'}},'secondary');
@@ -787,7 +798,7 @@
     button(138,594,113,26,'免费左右换位',{kind:'towerSwap',floor:focus},'secondary');
     button(259,594,113,26,'设备甲板',{kind:'towerExit'},'secondary');
     button(18,628,172,32,'海上怪事',{kind:'tales'},'primary');
-    button(198,628,174,32,state.island.docked?'基博岛 · 已靠岸':Core.islandReady(state,now)?'发现基博岛 · 靠岸':'岛屿航线',{kind:'island'},'primary');
+    button(198,628,174,32,state.island.docked?'基博岛 · 已靠岸':Core.islandReady(state,now)?(state.island.visits?'回访基博岛 · 随时':'发现基博岛 · 靠岸'):'岛屿航线',{kind:'island'},'primary');
   }
   function skyRoomModal(Core,state,ui,now){
     const r=Core.SKY_ROOMS.find(r=>r.id===ui.skyRoom),done=state.tower.rooms.includes(r.id),job=state.tower.construction;
@@ -889,7 +900,7 @@
     }
     if(!docked){
       text('基博岛航线',31,658,18,C.ink,'800');
-      wrap(!state.home.rooms.includes('lookout')?'先建好屋顶灯塔，再让鲨鱼海楼带大家出发。':Core.islandReady(state,now)?'岛民们在码头招手。靠岸后，直接点建筑和人物就能玩。':'正在海上航行，约 '+Math.ceil(Math.max(0,q.nextAt-now)/60000)+' 分钟后可再次经过。',31,690,325,14,C.ink,23);
+      wrap(!state.home.rooms.includes('lookout')?'先建好屋顶灯塔，再让鲨鱼海楼带大家出发。':Core.islandReady(state,now)?'岛民们在码头招手。靠岸后，直接点建筑和人物就能玩。':'已发现的岛屿随时可以回访，故事和场景变化都会保留。',31,690,325,14,C.ink,23);
       if(Core.islandReady(state,now))button(31,764,328,44,'让鲨鱼海楼靠岸',{kind:'islandDock'},'primary');return;
     }
     const next=['chief','bath','drinks'][n],selected=ui.islandSpot,step=Core.ISLAND_STEPS[Math.min(n,2)];
@@ -906,7 +917,7 @@
     const type=ui.modal;
     if(type==='tales'){
       text('海上怪事营业中',35,229,23,C.ink,'800');
-      button(35,245,320,30,'岛屿航线 · 基博岛',{kind:'island'},'secondary');
+      button(35,245,320,30,'海图 · 基博岛',{kind:'islandMap'},'secondary');
       Core.EPISODES.forEach((e,i)=>{const y=286+i*87,n=state.tales.choices[i].length,ready=Core.episodeReady(state,i);
         rr(30,y,330,78,12,ready?'#e3eddf':'#ece6d9');text(e.name,43,y+23,16,C.ink,'700');
         text(n===3?'已完成 · 重看故事':ready?e.steps[n][0]+' · '+n+'/3':e.hint,43,y+53,11,C.mute);

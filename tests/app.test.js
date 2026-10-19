@@ -169,3 +169,11 @@ test('four island landmarks cycle their own reactions without cost or story prog
  assert.deepEqual(h.app.snapshot().resources,before);assert.deepEqual(h.app.snapshot().island.choices,[]);
  h.click('岛务所 · 找岛主');h.click('先听岛民说说');assert.deepEqual(h.app.snapshot().island.choices,[0]);
 });
+
+test('sea chart revisits a completed legacy island immediately with progress intact',()=>{
+ const s=Core.fresh(1700000000000);s.introSeen=true;s.camp.stage=3;s.home.rooms=Core.ROOMS.map(r=>r.id);s.home.resident=true;s.island={docked:false,choices:[0,1,0],visits:1,nextAt:s.lastTick+300000};
+ const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]));h.tick(100);
+ h.click('海上怪事');h.click('海图 · 基博岛');assert.equal(h.app.uiSnapshot().modal,'islandMap');h.click('立即回访基博岛');h.click('跳过航行动画');
+ assert.deepEqual(h.app.snapshot().island.choices,[0,1,0]);assert.equal(h.app.snapshot().island.nextAt,0);
+ h.click('告别岛主 · 继续航行');h.click('跳过航行动画');h.click('回访基博岛 · 随时');assert.equal(h.app.snapshot().island.docked,true);
+});

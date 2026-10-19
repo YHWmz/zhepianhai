@@ -117,6 +117,7 @@
     function handle(event) {
       const n=platform.now();
       switch (event.kind) {
+        case 'islandMap':ui.modal='islandMap';break;
         case 'island':
           ui.modal=null;ui.islandScene=true;ui.islandSpot=null;ui.islandLine=null;ui.chiefCheeky=false;
           if(Core.islandReady(state,n))startIslandArrival(n);

@@ -68,7 +68,7 @@
     drying:{name:'海风晾鱼架',lines:['风把咸鱼吹得齐刷刷翻身。大婶：“看，连鱼都知道换个姿势。”','你轻轻一碰，晾鱼架奏出一声跑调的海风小曲。','有条鱼挂反了。岛主扶正眼镜：“它想看看不同的世界。”']}
   };
   function islandFresh(){return {docked:false,choices:[],visits:0,nextAt:0};}
-  function islandReady(s,now){return s.home.rooms.includes('lookout')&&!s.island.docked&&now>=s.island.nextAt;}
+  function islandReady(s,now){return s.home.rooms.includes('lookout')&&!s.island.docked;}
   function talesFresh(){return {choices:[[],[],[]],seen:[],cursor:0};}
   function episodeReady(s,i){return i===0?s.life.author&&s.buildings.some(b=>b.type==='puffer'):i===1?s.salvager.built:i===2?s.home.rooms.includes('kitchen')&&s.camp.meals>0:false;}
   function anticReady(s,i){const k=ANTICS[i][2];return k==='always'||k==='author'&&s.life.author||k==='salvage'&&s.salvager.built||s.buildings.some(b=>b.type===k);}
@@ -318,7 +318,7 @@
     advance(state, now);
     switch (action.type) {
       case 'islandDock': {
-        if(!islandReady(state,now))return fail('灯塔建成后，等航线再次经过基博岛');
+        if(!islandReady(state,now))return fail('请先建好灯塔；已靠岸时无需重复停靠');
         state.island.docked=true;state.island.visits++;return success('已靠岸 · 基博岛主来迎接了');
       }
       case 'islandChoice': {
@@ -329,7 +329,7 @@
       }
       case 'islandLeave': {
         if(!state.island.docked)return fail('海楼正在航行');
-        state.island.docked=false;state.island.nextAt=now+300000;return success('再次启航 · 故事进度已保留');
+        state.island.docked=false;state.island.nextAt=0;return success('再次启航 · 故事进度已保留');
       }
       case 'episode': {
         if(!integer(action.episode,0,2)||!integer(action.choice,0,1))return fail('无效的故事选择');
@@ -653,6 +653,8 @@
       if (!s.tales) s.tales = talesFresh();
       if (!s.tower) s.tower = towerFresh();
       if (!s.island) s.island = islandFresh();
+      // Legacy cooldowns no longer restrict visits. Keep the field for save compatibility.
+      s.island.nextAt=0;
       // Clock rollback must not freeze the entire village until a future date.
       if (s.lastTick > now) {
         const delta = s.lastTick - now;
