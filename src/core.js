@@ -61,6 +61,12 @@
     {title:'正经维修，不正经解说',line:'岛主卷起西装袖子亲自帮忙：“热水必须送到每户。”又小声补一句：“管子通不通，得慢慢摸清楚。”',choices:['请螃蟹搬个家','敲管子把它哄出来'],replies:['你给螃蟹换了个茶壶。岛主认真挂牌：“临时安置房，不收房租。”','岛主带头敲出舞曲，螃蟹横着跳出来。他偷笑：“扭得比我还放得开。”']},
     {title:'全岛第一杯热水',line:'热水终于来了。岛民把第一杯递给岛主，他转手让给了老人。随后端出海盐怪饮：“别光看颜色，先嘬一口。”',choices:['尝一口海盐怪饮','给大家拍张纪念照'],replies:['咸得眉毛都立起来了！岛主挤眼：“够不够味？我亲手调的。”岛民笑着送你一面感谢旗。','快门一响，岛主正经站好；下一秒又对镜头挑眉。大家笑着把“正经办事”感谢旗送上你的海楼。']}
   ];
+  const ISLAND_TOYS={
+    post:{name:'贝壳邮局',lines:['你敲了敲贝壳，弹出一封信：“收件人：昨天的我。请少喝那杯怪饮。”','邮差海鸥把信送回你手里：“同岛快递，快得还没出门。”','新明信片写着：“今天风很大，思念被吹到隔壁岛了。”']},
+    garden:{name:'怪蔬菜小园',lines:['紫甘蓝抖抖叶子，露出一只偷午睡的螃蟹。菜农：“这是会动的有机认证。”','南瓜顶起小草帽，里面传来一声“别浇了，我刚洗完头”。','岛主在菜地插了新牌：禁止比菜还闲。']},
+    well:{name:'回声许愿井',lines:['你向井里喊“发财！”回声答：“先吃饭！”看来井也饿了。','你许愿今晚不加班，井里冒出一个泡泡：“批准。”','你问井里有谁。回声说：“我只是路过的水。”']},
+    drying:{name:'海风晾鱼架',lines:['风把咸鱼吹得齐刷刷翻身。大婶：“看，连鱼都知道换个姿势。”','你轻轻一碰，晾鱼架奏出一声跑调的海风小曲。','有条鱼挂反了。岛主扶正眼镜：“它想看看不同的世界。”']}
+  };
   function islandFresh(){return {docked:false,choices:[],visits:0,nextAt:0};}
   function islandReady(s,now){return s.home.rooms.includes('lookout')&&!s.island.docked&&now>=s.island.nextAt;}
   function talesFresh(){return {choices:[[],[],[]],seen:[],cursor:0};}
@@ -660,5 +666,5 @@
       return s;
     } catch (_) { return null; }
   }
-  return { ISLAND_STEPS, islandFresh, islandReady, SKY_ROOMS, towerFresh, towerReady, towerTop, towerReach, EPISODES, ANTICS, SOUVENIRS, talesFresh, episodeReady, anticReady, nextAntic, nextEpisode, DECOR, STORIES, VIGNETTES, OFFLINE_CAP, story, storyReady, storyHint, SALVAGER, residents, salvagerAmount, woodEstimate, ROOMS, roomReady, mealReward, CONTRACTS, unlocked, CAMP_PROJECTS, campReady, VERSION, CAP, OFFLINE_MAX, RESOURCE_NAMES, DEFINITIONS, ORDER_LIST, QUESTS, fresh, costText, afford, amount, capacity, upgradeCost, expansionCost, expandable, power, advance, questDone, act, getBuilding, valid, serialize, deserialize };
+  return { ISLAND_TOYS, ISLAND_STEPS, islandFresh, islandReady, SKY_ROOMS, towerFresh, towerReady, towerTop, towerReach, EPISODES, ANTICS, SOUVENIRS, talesFresh, episodeReady, anticReady, nextAntic, nextEpisode, DECOR, STORIES, VIGNETTES, OFFLINE_CAP, story, storyReady, storyHint, SALVAGER, residents, salvagerAmount, woodEstimate, ROOMS, roomReady, mealReward, CONTRACTS, unlocked, CAMP_PROJECTS, campReady, VERSION, CAP, OFFLINE_MAX, RESOURCE_NAMES, DEFINITIONS, ORDER_LIST, QUESTS, fresh, costText, afford, amount, capacity, upgradeCost, expansionCost, expandable, power, advance, questDone, act, getBuilding, valid, serialize, deserialize };
 });

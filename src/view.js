@@ -690,7 +690,7 @@
       wrap('设备暂存之外，还有独立的离线补给箱。满仓未领取的补给会保留；手动加工只完成已投料的一批。', 35, y + 286, 315, 12, C.mute, 22);
       button(35,690,320,34,'统一收取补给',{kind:'action',action:{type:'collectAll'}},'primary');button(35,746,320,44,'看看我的家园',{kind:'close'},'secondary');
     } else if (type === 'settings') {
-      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.3.1', 35, y + 74, 127);
+      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.3.2', 35, y + 74, 127);
       wrap('这是一个本地经营原型。设备自然生产、供电加速、商船订单、扩建和升级均可游玩。', 35, y + 121, 314, 14, C.mute, 25);
       wrap('进度只保存在当前设备的本地存储。尚未接入账号、云存档、广告或支付。仓库每种资源上限 500。', 35, y + 213, 314, 13, C.mute, 23);
       button(35,643,320,28,state.life.sound?'音效：开启':'音效：关闭',{kind:'action',action:{type:'sound'}},'secondary');
@@ -824,53 +824,45 @@
     ctx.save();ctx.beginPath();ctx.rect(0,110,390,520);ctx.clip();
     // A single shoreline, village and jetty move together as the floating home approaches.
     ctx.save();ctx.translate(arriving?(1-smooth)*150:0,arriving?(1-smooth)*-30:0);
-    ellipse(303,331,226,216,'#fff4c05a');ellipse(302,323,214,208,'#e7c991','#956f4e');
-    ellipse(310,295,194,180,'#8f9e62');ellipse(300,335,170,147,'#b0ad72');
-    line([[251,172],[242,252],[297,342],[232,434],[207,488]],'#dcc18c',38);
-    for(let j=0;j<14;j++){const x=143+(j*47)%238,y=147+(j*71)%345;ellipse(x,y,4+(j%3)*2,2,'#86966a');}
-    // Timber public buildings reuse the game's existing hand-painted room assets.
-    roomSprite(4,193,115,174,142);
-    skyRoomSprite(Core.SKY_ROOMS.find(r=>r.id==='bath'),156,246,183,137,t,n>=2);
-    skyRoomSprite(Core.SKY_ROOMS.find(r=>r.id==='diner'),254,361,130,107,t,ui.islandSpot==='drinks');
-    for(const [rx,ry,rw] of [[197,145,168],[162,287,173],[258,407,120]]){
-      poly([[rx-5,ry+10],[rx+rw*.22,ry-12],[rx+rw*.8,ry-12],[rx+rw+5,ry+10]],'#6b7e6d','#d3b17b');
-      for(let j=0;j<9;j++)line([[rx+rw*.22+j*rw*.065,ry-10],[rx+j*rw/8,ry+9]],j%2?'#a88b65':'#779589',3);
-      line([[rx-5,ry+12],[rx+rw+5,ry+12]],'#d6ae6e',4);
-    }
-    // Pier piles, deck planks and rope rails connect the land to the shark's gangway.
-    for(let y=465;y<625;y+=36){for(const x of [168,232]){rr(x-4,y,8,34,2,'#634c38');ellipse(x,y,5,3,'#dec597');}}
-    rr(161,451,78,159,3,'#a47a50','#e3be80');
-    for(let y=456;y<610;y+=12)line([[164,y],[236,y]],'#634c38',2);
-    line([[168,465],[168,526],[168,596]],'#d8be88',2);line([[232,465],[232,526],[232,596]],'#d8be88',2);
-    for(const y of [465,526,596])for(const x of [168,232]){rr(x-3,y-13,6,26,2,'#70543c');ellipse(x,y-13,5,3,'#e1b77c');}
-    // A bent palm and warm quay lantern keep the island recognizable from a distance.
-    line([[365,294],[354,251],[360,206]],'#886843',10);
-    for(const dx of [-47,-28,28,45])poly([[360,205],[360+dx,195],[360+dx*1.2,225],[361,212]],'#427b65','#a1bc7c');
-    rr(151,459,6,42,2,'#674e37');rr(143,449,22,25,5,'#eac772','#7a5a38');ellipse(154,460,6,9,'#fff0a2');
+    if(assets.islandVillage){ctx.drawImage(assets.islandVillage,75,110,310,310*assets.islandVillage.height/assets.islandVillage.width);}
+    else {ellipse(275,360,170,210,'#8eac81','#e2ca94');text('岛屿美术加载中…',250,340,15,'#fff6d4','600','center');}
     const acting=ui.islandEffect&&ui.islandEffect.until>now?ui.islandEffect.spot:null;
-    crewSprite('crewBoss',142,377+(acting==='resident'?bob*3:0),77,acting==='resident',t);
-    crewSprite('crewTank',345,365+(n>=2?bob:0),69,n>=2,t);
-    crewSprite('crewWire',341,480,72,acting==='drinks',t);
-    islandChief(224,283,91,!!ui.chiefCheeky);
-    // The pipe crab is a tiny scene toy; it scuttles when tapped and becomes a neighbor after repair.
-    const cx=269+(acting==='crab'?Math.sin(t*12)*18:0),cy=511;
-    for(const side of [-1,1])for(let j=0;j<3;j++)line([[cx+side*7,cy+j*2],[cx+side*(16+j*2),cy-4+j*6]],'#a95036',2);
-    ellipse(cx,cy,11,7,'#e6874e','#995437');for(const side of [-1,1]){line([[cx+side*5,cy-4],[cx+side*6,cy-12]],'#ab663b',2);ellipse(cx+side*6,cy-12,3,3,'#fff3ce');ellipse(cx+side*6,cy-12,1,2,'#243c40');}
-    if(n>=2){for(let j=0;j<4;j++)ellipse(205+j*18,267-Math.sin(t+j)*6,6,10,'#fff3dd77');}
-    if(n===3){rr(275,184,77,24,2,'#9c3932');text('谢谢海楼！',313,197,12,'#ffe5a5','700','center');}
-    function spot(x,y,w,h,id,label){
-      if(docked&&id===['chief','bath','drinks'][n])rr(x-3,y-3,w+6,30,10,'#ffd07466','#ffd574');
-      rr(x,y,w,24,7,ui.islandSpot===id?'#ffc85e':'#fff1d9ee','#987448');text(label,x+w/2,y+12,11,C.ink,'700','center');
-      if(docked)hit(x,y,w,h,{kind:'islandSpot',spot:id},label);
+    const pulse=ui.reducedMotion?0:Math.sin(t*7),effectProgress=ui.islandEffect?Math.max(0,Math.min(1,1-(ui.islandEffect.until-now)/2200)):0;
+    crewSprite('crewBoss',207,355+(acting==='resident'?pulse*2:0),51,acting==='resident',t);
+    crewSprite('crewTank',348,393,43,n>=2,t);
+    crewSprite('crewWire',345,516,45,acting==='drinks',t);
+    islandChief(252,290,65,!!ui.chiefCheeky);
+    const cx=316+(acting==='crab'?pulse*12:0),cy=523;
+    for(const side of [-1,1])for(let j=0;j<3;j++)line([[cx+side*5,cy+j*2],[cx+side*(10+j*2),cy-3+j*4]],'#a95036',1.5);
+    ellipse(cx,cy,8,5,'#e6874e','#995437');for(const side of [-1,1]){line([[cx+side*4,cy-3],[cx+side*4,cy-8]],'#ab663b',1.5);ellipse(cx+side*4,cy-8,2,2,'#fff3ce');}
+    if(n>=2){for(let j=0;j<5;j++)ellipse(131+j*8,242-j*3-(ui.reducedMotion?0:Math.sin(t+j)*6),4,7,'#fff3dd99');}
+    if(n===3){rr(267,256,65,17,2,'#9c3932');text('谢谢海楼！',300,265,10,'#ffe5a5','700','center');}
+    if(acting==='post'){
+      const ey=457-effectProgress*42;rr(314,ey,25,17,2,'#fff0c8','#9c7253');line([[315,ey+1],[327,ey+10],[338,ey+1]],'#ba7a53',1);rr(332,ey+3,4,5,0,'#b44f43');
     }
-    spot(191,118,164,164,'chief','岛务所 · 找岛主');
-    spot(163,272,161,113,'bath',n>=2?'热水澡堂 · 热气腾腾':'公共澡堂 · 咔哒咔哒');
-    spot(256,388,122,98,'drinks','怪饮摊 · 嘬一口');
-    // Resident and crab hit areas are separate from the building zones.
-    spot(55,278,102,28,'resident','大婶 · 挥澡盆');
-    if(docked)hit(112,306,46,75,{kind:'islandSpot',spot:'resident'},'岛民大婶');
-    spot(249,535,117,28,'crab','螃蟹 · 横着走');
-    if(docked)hit(246,490,52,41,{kind:'islandSpot',spot:'crab'},'点点螃蟹');
+    if(acting==='well'){
+      for(let j=0;j<3;j++)ellipse(244,416-j*4,7+(effectProgress*14+j*3)%21,3,null,'#defaf0');text('批准！',247,383-effectProgress*14,12,'#ffefae','800','center');
+    }
+    if(acting==='garden'){
+      for(let j=0;j<5;j++){const x=145+j*9,y=437-Math.abs(Math.sin(effectProgress*5+j))*13;ellipse(x,y,4,2,j%2?'#a8d77c':'#bc87b1');}text('沙沙～',164,417,11,'#fff2bf','700','center');
+    }
+    if(acting==='drying'){text('♪',161+pulse*5,378-effectProgress*14,22,'#fff2bf','800','center');icon('fish',167,392+Math.abs(pulse)*4,18);}
+    function spot(x,y,w,h,id,label,short){
+      const target=id===['chief','bath','drinks'][n],selected=ui.islandSpot===id,bx=x+w/2,by=y+h-3;
+      if(docked){
+        rr(bx-24,by-10,48,20,8,selected||target?'#ffd178ee':'#183e42c9',target?'#fff0b7':'#b99b6a');
+        text(short,bx,by,10,selected||target?C.ink:'#fff2ce','700','center');
+        hit(x,y,w,h+8,{kind:'islandSpot',spot:id},label);
+      }
+    }
+    spot(191,142,167,116,'chief','岛务所 · 找岛主','岛务所');
+    spot(95,265,106,80,'bath',n>=2?'热水澡堂 · 热气腾腾':'公共澡堂 · 咔哒咔哒','澡堂');
+    spot(270,284,108,85,'drinks','怪饮摊 · 嘬一口','怪饮摊');
+    spot(126,369,73,35,'drying','海风晾鱼架','晾鱼架');
+    spot(130,416,73,45,'garden','怪蔬菜小园','怪菜园');
+    spot(216,368,57,62,'well','回声许愿井','许愿井');
+    spot(278,424,95,75,'post','贝壳邮局','邮局');
+    if(docked){hit(187,303,40,57,{kind:'islandSpot',spot:'resident'},'岛民大婶');hit(296,505,42,37,{kind:'islandSpot',spot:'crab'},'点点螃蟹');hit(228,263,47,33,{kind:'islandSpot',spot:'chief'},'岛主变脸');}
     ctx.restore();
     // Render the player's actual multi-storey house and shark as one moving object.
     const boatScale=arriving?.5+.3*smooth:departing?.8-.3*smooth:q.docked?.8:.5;
@@ -881,11 +873,11 @@
     towerScene(Core,state,Object.assign({},ui,{photo:true,towerOverview:true,roomEffect:null}),t,now);
     ctx.restore();hits.splice(beforeBoat);
     if(docked||arriving&&p>.88||departing&&p<.12){
-      poly([[118,575],[168,552],[179,564],[129,590]],'#b18d58','#e5c08a');
-      for(let j=0;j<5;j++)line([[121+j*9,576-j*4],[131+j*9,588-j*4]],'#6a5339',2);
-      line([[127,595],[142,609],[168,592]],'#e3c38c',2);
-      if(acting==='drinks')text('？！',338,394,24,'#fff3bc','800','center');
-      if(acting==='resident')text(n>=2?'这才叫办事！':'先修澡堂！',130,310,12,'#fff4ce','700','center');
+      poly([[118,575],[208,552],[219,564],[129,590]],'#b18d58','#e5c08a');
+      for(let j=0;j<9;j++)line([[121+j*10,576-j*2.6],[131+j*10,588-j*2.6]],'#6a5339',2);
+      line([[127,595],[170,609],[216,582]],'#e3c38c',2);
+      if(acting==='drinks')text('？！',336,323,24,'#fff3bc','800','center');
+      if(acting==='resident')text(n>=2?'这才叫办事！':'先修澡堂！',207,299,11,'#fff4ce','700','center');
     }
     ctx.restore();
     // A small action tray keeps the island visible; no scene-blocking conversation modal.
@@ -902,8 +894,8 @@
     }
     const next=['chief','bath','drinks'][n],selected=ui.islandSpot,step=Core.ISLAND_STEPS[Math.min(n,2)];
     const hints={chief:n===0?'岛主扶正领带：“先把岛民的事办好。”转头挤眼：“来都来了，不得泡一泡？”':'岛主端着茶杯：“有事找我，没事也来泡……茶。”',bath:n===1?'水管里有只螃蟹！岛主卷起袖子：“管子通不通，得慢慢摸清楚。”':n>=2?'热水冒出来了！大婶舒舒服服地叹气：“这岛主嘴怪，办事倒实在。”':'大婶敲着澡盆：“岛主还在码头等你，先叫他过来！”',drinks:n===2?'岛主把第一杯热水让给老人，再端出海盐怪饮：“别光看颜色，先嘬一口。”':'摊主晃晃杯子，泡沫顶起了眉毛：“今天的配方，我也刚知道。”',resident:n>=2?'大婶举起澡盆当奖杯：“咱岛主话不着调，心可一直装着大家。”':'大婶挥着澡盆指路：“先找岛主，再修澡堂，最后请你喝点怪的！”',crab:n>=2?'螃蟹从安置茶壶里出来，横着巡查码头。岛主：“走得很有自己的想法。”':'螃蟹横着挪了三步：“借你管子泡个澡，怎么全岛都知道了？”'};
-    text(ui.islandLine?'岛上又多了一件笑话':n===3?'基博岛 · 老朋友，随便逛逛':selected===next?step.title: '岛上小事 '+(n+1)+'/3 · '+['找岛主','点澡堂','逛怪饮摊'][n],31,656,17,C.ink,'800');
-    wrap(ui.islandLine||hints[selected]||(n===3?'感谢旗已挂上海楼。点岛主、岛民、澡堂或螃蟹，看看今天的怪事。':'直接点岛上的发光招牌。随时可以回海楼，岛上的进度会保留。'),31,683,328,13,C.ink,20);
+    text(Core.ISLAND_TOYS[selected]?Core.ISLAND_TOYS[selected].name:ui.islandLine?'岛上又多了一件笑话':n===3?'基博岛 · 老朋友，随便逛逛':selected===next?step.title: '岛上小事 '+(n+1)+'/3 · '+['找岛主','点澡堂','逛怪饮摊'][n],31,656,17,C.ink,'800');
+    wrap(ui.islandLine||hints[selected]||(n===3?'感谢旗已挂上海楼。点岛主、岛民、澡堂或螃蟹，看看今天的怪事。':'金色路牌指向下一段小事。邮局、菜园、许愿井和晾鱼架也可以反复点着玩。'),31,683,328,13,C.ink,20);
     if(ui.islandLine)button(31,745,328,34,'收起小事 · 继续逛岛',{kind:'islandNext'},'secondary');
     else if(n<3&&selected===next)step.choices.forEach((label,i)=>button(31+i*168,745,160,34,label,{kind:'islandChoice',choice:i},'primary'));
     else if(n===3&&selected==='chief')[0,1,2].forEach(i=>button(31+i*111,745,105,34,'回忆 '+(i+1),{kind:'islandReplay',step:i},'secondary'));

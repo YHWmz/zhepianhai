@@ -47,6 +47,7 @@
     if(platform.loadImage)for(const kind of ['author','decor'])loadArt('assets/'+kind+'-v10.png').then(img=>{View.setAssets({[kind]:img});ui.artLoaded++;}).catch(()=>ui.artFailed.push(kind));
     if(platform.loadImage)loadArt('assets/skyrooms-v12.png').then(img=>{View.setAssets({skyrooms:img});ui.artLoaded++;}).catch(()=>ui.artFailed.push('skyrooms'));
     if(platform.loadImage)loadArt('assets/chief-v13.png').then(img=>{View.setAssets({chief:img});ui.artLoaded++;}).catch(()=>ui.artFailed.push('chief'));
+    if(platform.loadImage)loadArt('assets/island-v132.png').then(img=>{View.setAssets({islandVillage:img});ui.artLoaded++;}).catch(()=>ui.artFailed.push('islandVillage'));
     function toast(message) { ui.toast = message; ui.toastUntil = platform.now() + 3300; }
     function save() {
       try {
@@ -126,6 +127,10 @@
           if(!state.island.docked||ui.islandTravel)break;
           ui.islandSpot=event.spot;ui.islandLine=null;ui.chiefCheeky=event.spot==='chief'?!ui.chiefCheeky:false;
           ui.islandEffect={spot:event.spot,until:n+2200};
+          if(Object.prototype.hasOwnProperty.call(Core.ISLAND_TOYS,event.spot)){
+            ui.islandToyCounts=ui.islandToyCounts||{};const count=ui.islandToyCounts[event.spot]||0;
+            ui.islandLine=Core.ISLAND_TOYS[event.spot].lines[count%3];ui.islandToyCounts[event.spot]=count+1;
+          }
           break;
         }
         case 'islandDock':startIslandArrival(n);break;

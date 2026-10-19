@@ -157,3 +157,15 @@ test('island toys do not spend resources, tower swipes stay disabled, home retur
  h.click('返回海楼');assert.equal(h.app.snapshot().island.docked,true);h.click('基博岛 · 已靠岸');assert.equal(h.app.uiSnapshot().islandTravel,null);assert.equal(h.app.snapshot().island.visits,1);
  const restored=harness(h.storage);restored.tick(100);assert.equal(restored.app.uiSnapshot().islandScene,true);assert.equal(restored.app.uiSnapshot().islandTravel,null);
 });
+
+test('four island landmarks cycle their own reactions without cost or story progress',()=>{
+ const s=Core.fresh(1700000000000);s.introSeen=true;s.camp.stage=3;s.home.rooms=Core.ROOMS.map(r=>r.id);s.home.resident=true;
+ const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]));h.tick(100);h.click('发现基博岛 · 靠岸');h.click('跳过航行动画');
+ const before=h.app.snapshot().resources;
+ for(const [id,label] of [['post','贝壳邮局'],['garden','怪蔬菜小园'],['well','回声许愿井'],['drying','海风晾鱼架']]){
+  h.click(label);assert.equal(h.app.uiSnapshot().islandEffect.spot,id);assert.equal(h.app.uiSnapshot().islandLine,Core.ISLAND_TOYS[id].lines[0]);
+  h.click(label);assert.equal(h.app.uiSnapshot().islandLine,Core.ISLAND_TOYS[id].lines[1]);
+ }
+ assert.deepEqual(h.app.snapshot().resources,before);assert.deepEqual(h.app.snapshot().island.choices,[]);
+ h.click('岛务所 · 找岛主');h.click('先听岛民说说');assert.deepEqual(h.app.snapshot().island.choices,[0]);
+});
