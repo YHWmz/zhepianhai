@@ -20,6 +20,7 @@
     const elapsed = now - state.lastTick;
     const catchup = Core.advance(state, now, true);
     const ui = {
+      sneeze:state.sneeze.pending?{phase:state.sneeze.pending.choice===null?'warn':'play',started:now,choice:state.sneeze.pending.choice}:null,sneezeDrag:null,nextSneezeCheck:now+45000,
       islandScene:state.island.docked, islandTravel:null, islandSpot:null, islandLine:null,
       tower: state.home.rooms.includes('lookout'), floor: Math.max(3,Core.towerTop(state)), towerOverview: false, towerScroll: null, roomEffect: null,
       tab: 'home', modal: !state.introSeen ? 'welcome' : null, selected: null, buildPlot: null, moveId: null, layoutMode: false,
@@ -71,6 +72,7 @@
     function dispatch(action) {
       const n = platform.now();
       const result = Core.act(state, action, n);
+      if(result.ok&&Core.sneezeUnlocked(state)&&['collect','collectAll','salvage','room','towerBuild','meal','order','upgrade'].includes(action.type))state.sneeze.activity=Math.min(4,state.sneeze.activity+1);
       toast(result.message);
       save();
       if (result.ok) {
@@ -114,9 +116,26 @@
       if(ui.islandTravel.kind==='depart')ui.islandScene=false;
       ui.islandTravel=null;
     }
+    function startSneeze(manual){
+      if(ui.sneeze)return;const r=dispatch({type:'sneezeBegin',manual});
+      if(r.ok){ui.modal=null;ui.sneeze={phase:'warn',started:platform.now(),choice:null};}
+    }
+    function chooseSneeze(choice){
+      const r=dispatch({type:'sneezeChoose',choice});if(r.ok)ui.sneeze={phase:'play',started:platform.now(),choice};
+    }
+    function finishSneeze(){
+      const r=dispatch({type:'sneezeFinish'});if(r.ok){ui.sneeze.phase='result';ui.sneezeDrag=null;}
+    }
     function handle(event) {
       const n=platform.now();
       switch (event.kind) {
+        case 'sneezeAlbum':ui.modal='sneezeAlbum';break;
+        case 'sneezeStart':startSneeze(true);break;
+        case 'sneezeChoose':chooseSneeze(event.choice);break;
+        case 'sneezeSkip':if(ui.sneeze&&ui.sneeze.phase==='play'&&state.sneeze.seen.includes(ui.sneeze.choice))finishSneeze();break;
+        case 'sneezeExit':if(ui.sneeze&&ui.sneeze.phase==='result'){ui.sneeze=null;ui.nextSneezeCheck=n+45000;}break;
+        case 'sneezeAgain':if(ui.sneeze&&ui.sneeze.phase==='result'){ui.sneeze=null;startSneeze(true);}break;
+        case 'sneezeCloth':chooseSneeze(0);break;
         case 'islandMap':ui.modal='islandMap';break;
         case 'island':
           ui.modal=null;ui.islandScene=true;ui.islandSpot=null;ui.islandLine=null;ui.chiefCheeky=false;
@@ -221,7 +240,7 @@
         case 'confirmUpgrade': if (dispatch({ type: 'upgrade', id: ui.selected }).ok) ui.modal = null; break;
         case 'resetAsk': ui.resetConfirm = true; break;
         case 'resetCancel': ui.resetConfirm = false; break;
-        case 'reset': ui.islandScene=false;ui.islandTravel=null;ui.islandSpot=null;ui.islandLine=null;ui.tower=false;ui.floor=3;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect=null;ui.photo=false;ui.gesture=null;ui.storyResult=null;ui.sceneReply=null;ui.buildAnimationUntil=0;ui.crewReaction=null;state = Core.fresh(numericNow()); ui.selected = null; ui.moveId = null; ui.tab = 'home'; ui.modal = 'welcome'; ui.resetConfirm = false; save(); break;
+        case 'reset': ui.sneeze=null;ui.sneezeDrag=null;ui.islandScene=false;ui.islandTravel=null;ui.islandSpot=null;ui.islandLine=null;ui.tower=false;ui.floor=3;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect=null;ui.photo=false;ui.gesture=null;ui.storyResult=null;ui.sceneReply=null;ui.buildAnimationUntil=0;ui.crewReaction=null;state = Core.fresh(numericNow()); ui.selected = null; ui.moveId = null; ui.tab = 'home'; ui.modal = 'welcome'; ui.resetConfirm = false; save(); break;
         case 'plot': {
           const b = state.buildings.find(x => x.plot === event.plot);
           if (ui.moveId) {
@@ -281,8 +300,13 @@
         if (n - ui.lastFrame >= 30) {
           const building=state.tower.construction&&state.tower.construction.id;
           Core.advance(state, n);
+          if(ui.sneeze&&!ui.modal){
+            const age=n-ui.sneeze.started;
+            if(ui.sneeze.phase==='warn'&&age>=18000&&!ui.sneezeDrag)chooseSneeze(2);
+            else if(ui.sneeze.phase==='play'&&age>=(ui.reducedMotion?4500:9000))finishSneeze();
+          }else if(!ui.sneeze&&n>=ui.nextSneezeCheck&&ui.tab==='home'&&!ui.modal&&!ui.photo&&!ui.islandScene&&!ui.gesture&&!ui.pointerActive&&!ui.layoutMode&&!ui.moveId&&!state.home.construction&&!state.tower.construction&&Core.sneezeReady(state,n))startSneeze(false);
           if(ui.islandTravel&&n-ui.islandTravel.started>=4200)finishIslandTravel();
-          if(building&&!state.tower.construction){const room=Core.SKY_ROOMS.find(r=>r.id===building);ui.tower=true;ui.floor=room.floor;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect={id:building,until:n+6000};toast(room.name+'落成！点房间看看邻居');save();}
+          if(building&&!state.tower.construction&&!ui.sneeze){const room=Core.SKY_ROOMS.find(r=>r.id===building);ui.tower=true;ui.floor=room.floor;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect={id:building,until:n+6000};toast(room.name+'落成！点房间看看邻居');save();}
           if (n - lastSave > 5000) save();
           if(n>ui.nextVignette&&!ui.modal&&!ui.photo){const i=Core.nextAntic(state);ui.sceneReply={line:Core.ANTICS[i][3],until:n+5000};ui.nextVignette=n+18000;}
           render(n);
@@ -305,7 +329,7 @@
     }
     if(platform.onWheel)platform.onWheel(e=>{
       const p=point(e.x,e.y);
-      if(ui.islandScene||ui.tab!=='home'||!ui.tower||ui.modal||ui.photo||ui.layoutMode||p.x<12||p.x>342||p.y<184||p.y>553)return false;
+      if(ui.sneeze||ui.islandScene||ui.tab!=='home'||!ui.tower||ui.modal||ui.photo||ui.layoutMode||p.x<12||p.x>342||p.y<184||p.y>553)return false;
       scrollTower(View.towerCamera(Core,state,ui).scroll+e.delta/transform.scale);return true;
     });
     if(platform.onGesture){
@@ -316,24 +340,28 @@
 
       platform.onGesture(e=>{
         const p=point(e.x,e.y);
-        if(e.phase==='start'){
-          const h=targetAt(p.x,p.y);const towerSwipe=!ui.islandScene&&ui.tab==='home'&&ui.tower&&!ui.modal&&!ui.photo&&!ui.layoutMode&&p.x<342&&p.y>=184&&p.y<=553;down=h||towerSwipe?{h,x:p.x,y:p.y,towerSwipe,scroll:towerSwipe?View.towerCamera(Core,state,ui).scroll:0,dragged:false}:null;
+        if(e.phase==='start'){ui.pointerActive=true;
+          const h=targetAt(p.x,p.y);const towerSwipe=!ui.sneeze&&!ui.islandScene&&ui.tab==='home'&&ui.tower&&!ui.modal&&!ui.photo&&!ui.layoutMode&&p.x<342&&p.y>=184&&p.y<=553;down=h||towerSwipe?{h,x:p.x,y:p.y,towerSwipe,scroll:towerSwipe?View.towerCamera(Core,state,ui).scroll:0,dragged:false}:null;
+          if(h&&h.event&&h.event.kind==='sneezeCloth')ui.sneezeDrag={x:p.x,y:p.y};
           if(h&&h.event&&h.event.kind==='gestureStart')ui.gesture={x:p.x,y:p.y,started:platform.now()};
-        }else if(e.phase==='move'&&down&&down.towerSwipe&&!ui.gesture){
+        }else if(e.phase==='move'&&ui.sneezeDrag){ui.sneezeDrag={x:p.x,y:p.y};}
+        else if(e.phase==='move'&&down&&down.towerSwipe&&!ui.gesture){
           if(Math.abs(p.y-down.y)>8||down.dragged){panTower(p);}
         }else if(e.phase==='move'&&ui.gesture){ui.gesture.x=p.x;ui.gesture.y=p.y;}
-        else if(e.phase==='cancel'){down=null;ui.gesture=null;}
-        else if(e.phase==='end'){
-          if(ui.gesture){const g=ui.gesture;ui.gesture=null;if(ui.modal==='interact'&&(ui.interact==='puffer'?platform.now()-g.started>=1200&&p.x>=75&&p.x<=315&&p.y>=335&&p.y<=625:Math.hypot(p.x-260,p.y-440)<90))finishInteraction();else toast(ui.interact==='puffer'?'按住 1.2 秒再松开，也可以点下方按钮':'把材料拖到右侧虚线圈里');}
+        else if(e.phase==='cancel'){ui.pointerActive=false;down=null;ui.gesture=null;ui.sneezeDrag=null;}
+        else if(e.phase==='end'){ui.pointerActive=false;
+          if(ui.sneezeDrag){ui.sneezeDrag=null;if(Math.hypot(p.x-142,p.y-520)<72||down&&Math.hypot(p.x-down.x,p.y-down.y)<24)chooseSneeze(0);}
+          else if(ui.gesture){const g=ui.gesture;ui.gesture=null;if(ui.modal==='interact'&&(ui.interact==='puffer'?platform.now()-g.started>=1200&&p.x>=75&&p.x<=315&&p.y>=335&&p.y<=625:Math.hypot(p.x-260,p.y-440)<90))finishInteraction();else toast(ui.interact==='puffer'?'按住 1.2 秒再松开，也可以点下方按钮':'把材料拖到右侧虚线圈里');}
           else if(down&&down.towerSwipe&&(down.dragged||Math.abs(p.y-down.y)>8)){panTower(p);}
           else if(down&&down.h){const h=targetAt(p.x,p.y);if(h&&h.event&&JSON.stringify(h.event)===JSON.stringify(down.h.event)&&Math.hypot(p.x-down.x,p.y-down.y)<24)handle(h.event);}
           down=null;
         }
       });
     }else platform.onPointer((x,y)=>{const p=point(x,y),h=targetAt(p.x,p.y);if(h&&h.event)handle(h.event);});
-    platform.onHide(() => { Core.advance(state, platform.now()); save();ui.gesture=null; ui.paused = true; });
+    platform.onHide(() => { Core.advance(state, platform.now()); save();ui.pointerActive=false;ui.gesture=null;ui.sneezeDrag=null;ui.sneezeHiddenAt=platform.now(); ui.paused = true; });
     platform.onShow(() => {
       const n = platform.now(), gap = n - state.lastTick;
+      if(ui.sneeze&&ui.sneezeHiddenAt)ui.sneeze.started+=n-ui.sneezeHiddenAt;
       const result = Core.advance(state, n, true);
       if (gap > 30000 && state.introSeen) { ui.offline = { elapsed: result.elapsed, produced: result.produced }; ui.modal = 'offline'; }
       ui.paused = false; resize(); save();

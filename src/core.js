@@ -67,6 +67,14 @@
     well:{name:'回声许愿井',lines:['你向井里喊“发财！”回声答：“先吃饭！”看来井也饿了。','你许愿今晚不加班，井里冒出一个泡泡：“批准。”','你问井里有谁。回声说：“我只是路过的水。”']},
     drying:{name:'海风晾鱼架',lines:['风把咸鱼吹得齐刷刷翻身。大婶：“看，连鱼都知道换个姿势。”','你轻轻一碰，晾鱼架奏出一声跑调的海风小曲。','有条鱼挂反了。岛主扶正眼镜：“它想看看不同的世界。”']}
   };
+  const SNEEZE_ENDINGS=[
+    {name:'床单变成了帆',keepsake:'鼓风小帆',line:'鲨鱼憋住了喷嚏，没憋住脸。床单鼓成一张帆，整栋楼认真地假装起飞。'},
+    {name:'全楼准备，今晚加菜',keepsake:'飞鱼风向标',line:'铃声一响，锅、网和晾衣绳各就各位。飞鱼落进锅里，卷姨宣布：今天的菜是海风送的。'},
+    {name:'喷嚏海盐拿铁',keepsake:'喷嚏纪念杯',line:'拖鞋先起飞，泡沫后到场。大家接住了该接的东西，只有这一杯的味道没人接得住。'}
+  ];
+  function sneezeFresh(){return {seen:[],activity:0,nextAt:0,pending:null};}
+  function sneezeUnlocked(s){return s.camp.stage===3&&s.home.rooms.includes('roof');}
+  function sneezeReady(s,now){return sneezeUnlocked(s)&&!s.sneeze.pending&&s.sneeze.activity>=4&&now>=s.sneeze.nextAt;}
   function islandFresh(){return {docked:false,choices:[],visits:0,nextAt:0};}
   function islandReady(s,now){return s.home.rooms.includes('lookout')&&!s.island.docked;}
   function talesFresh(){return {choices:[[],[],[]],seen:[],cursor:0};}
@@ -227,7 +235,7 @@
     return {
       version: VERSION, lastTick: now, createdAt: now,
       resources: { wood: 16, metal: 6, water: 0, fish: 0, coins: 20, oxygen: 0, resin: 0, mortar: 0 },
-      salvager: salvagerFresh(), life: lifeFresh(), tales: talesFresh(), tower: towerFresh(), island: islandFresh(),
+      salvager: salvagerFresh(), life: lifeFresh(), tales: talesFresh(), tower: towerFresh(), island: islandFresh(), sneeze:sneezeFresh(),
       plots: [5, 6, 7, 9, 10, 11], buildings: [], nextId: 1,
       salvage: 3, salvageProgress: 0, quest: 0, order: 0, introSeen: false,
       camp: { stage: 0, meals: 0, nextMealAt: 0 }, home: homeFresh(),
@@ -317,6 +325,19 @@
   function act(state, action, now) {
     advance(state, now);
     switch (action.type) {
+      case 'sneezeBegin':{
+        if(!sneezeUnlocked(state)||state.sneeze.pending||(!action.manual&&!sneezeReady(state,now)))return fail('鲨鱼还没准备好');
+        state.sneeze.pending={choice:null};return success('它好像……要打喷嚏了');
+      }
+      case 'sneezeChoose':{
+        if(!state.sneeze.pending||state.sneeze.pending.choice!==null||!integer(action.choice,0,2))return fail('这次处理方式已经选好了');
+        state.sneeze.pending.choice=action.choice;return success('全楼注意！');
+      }
+      case 'sneezeFinish':{
+        const e=state.sneeze,p=e.pending;if(!p||!integer(p.choice,0,2))return fail('这段趣闻还没有发生');
+        const choice=p.choice;if(!e.seen.includes(choice))e.seen.push(choice);
+        e.pending=null;e.activity=0;e.nextAt=now+180000;return success('已收藏：'+SNEEZE_ENDINGS[choice].name);
+      }
       case 'islandDock': {
         if(!islandReady(state,now))return fail('请先建好灯塔；已靠岸时无需重复停靠');
         state.island.docked=true;state.island.visits++;return success('已靠岸 · 基博岛主来迎接了');
@@ -602,6 +623,10 @@
       if(q.built&&(!s.home||!s.home.rooms.includes('roof')))return false;
       if(q.pending===SALVAGER.capacity&&q.progress!==0)return false;
     }
+    if(s.sneeze!==undefined){const e=s.sneeze;
+      if(!e||!Array.isArray(e.seen)||e.seen.length>3||new Set(e.seen).size!==e.seen.length||!e.seen.every(x=>integer(x,0,2))||!integer(e.activity,0,4)||!Number.isFinite(e.nextAt)||e.nextAt<0||e.pending!==null&&(!e.pending||e.pending.choice!==null&&!integer(e.pending.choice,0,2)))return false;
+      if((e.seen.length||e.pending)&&(!s.camp||s.camp.stage!==3||!s.home||!s.home.rooms.includes('roof')))return false;
+    }
     if(s.island!==undefined){const q=s.island;
       if(!q||typeof q.docked!=='boolean'||!Array.isArray(q.choices)||q.choices.length>3||!q.choices.every(x=>integer(x,0,1))||!integer(q.visits,0,1e8)||!Number.isFinite(q.nextAt)||q.nextAt<0)return false;
       if((q.docked||q.choices.length||q.visits)&&(!s.home||!s.home.rooms.includes('lookout')))return false;
@@ -653,11 +678,13 @@
       if (!s.tales) s.tales = talesFresh();
       if (!s.tower) s.tower = towerFresh();
       if (!s.island) s.island = islandFresh();
+      if (!s.sneeze) s.sneeze = sneezeFresh();
       // Legacy cooldowns no longer restrict visits. Keep the field for save compatibility.
       s.island.nextAt=0;
       // Clock rollback must not freeze the entire village until a future date.
       if (s.lastTick > now) {
         const delta = s.lastTick - now;
+        s.sneeze.nextAt=Math.max(0,s.sneeze.nextAt-delta);
         s.island.nextAt=Math.max(0,s.island.nextAt-delta);
         for (const b of s.buildings) if (b.type === 'eel') b.fuelUntil = Math.max(0, b.fuelUntil - delta);
         if (s.home.construction) { s.home.construction.startedAt = Math.max(0, s.home.construction.startedAt-delta); s.home.construction.endsAt = s.home.construction.startedAt+ROOMS.find(r=>r.id===s.home.construction.id).seconds*1000; }
@@ -668,5 +695,5 @@
       return s;
     } catch (_) { return null; }
   }
-  return { ISLAND_TOYS, ISLAND_STEPS, islandFresh, islandReady, SKY_ROOMS, towerFresh, towerReady, towerTop, towerReach, EPISODES, ANTICS, SOUVENIRS, talesFresh, episodeReady, anticReady, nextAntic, nextEpisode, DECOR, STORIES, VIGNETTES, OFFLINE_CAP, story, storyReady, storyHint, SALVAGER, residents, salvagerAmount, woodEstimate, ROOMS, roomReady, mealReward, CONTRACTS, unlocked, CAMP_PROJECTS, campReady, VERSION, CAP, OFFLINE_MAX, RESOURCE_NAMES, DEFINITIONS, ORDER_LIST, QUESTS, fresh, costText, afford, amount, capacity, upgradeCost, expansionCost, expandable, power, advance, questDone, act, getBuilding, valid, serialize, deserialize };
+  return { SNEEZE_ENDINGS,sneezeFresh,sneezeUnlocked,sneezeReady,ISLAND_TOYS, ISLAND_STEPS, islandFresh, islandReady, SKY_ROOMS, towerFresh, towerReady, towerTop, towerReach, EPISODES, ANTICS, SOUVENIRS, talesFresh, episodeReady, anticReady, nextAntic, nextEpisode, DECOR, STORIES, VIGNETTES, OFFLINE_CAP, story, storyReady, storyHint, SALVAGER, residents, salvagerAmount, woodEstimate, ROOMS, roomReady, mealReward, CONTRACTS, unlocked, CAMP_PROJECTS, campReady, VERSION, CAP, OFFLINE_MAX, RESOURCE_NAMES, DEFINITIONS, ORDER_LIST, QUESTS, fresh, costText, afford, amount, capacity, upgradeCost, expansionCost, expandable, power, advance, questDone, act, getBuilding, valid, serialize, deserialize };
 });
