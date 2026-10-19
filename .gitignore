@@ -17,3 +17,11 @@ concepts/
 WECHAT-HANDOFF.txt
 ship-log.md
 /*.png
+
+# Cocos Creator generated / user-local data
+v2/library/
+v2/temp/
+v2/local/
+v2/profiles/
+v2/build/
+v2/.cache/

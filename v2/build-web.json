@@ -1,0 +1,15 @@
+{
+  "name": "这片海我包了",
+  "platform": "web-mobile",
+  "buildPath": "project://build",
+  "outputName": "web-mobile",
+  "startScene": "cbfa65de-2f71-42f5-ab08-6af893d47252",
+  "scenes": [
+    {
+      "url": "db://assets/scenes/Harbor.scene",
+      "uuid": "cbfa65de-2f71-42f5-ab08-6af893d47252"
+    }
+  ],
+  "debug": true,
+  "md5Cache": false
+}

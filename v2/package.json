@@ -1,0 +1,18 @@
+{
+  "name": "zhepianhai-voyage",
+  "uuid": "6f50828d-a97c-45f8-afb9-8f4c723b4cb9",
+  "version": "2.0.0-alpha.1",
+  "creator": {
+    "version": "3.8.7"
+  },
+  "description": "这片海我包了 · 大航海时代",
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "check:wechat": "node tools/check-wechat.cjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "sharp": "0.35.5"
+  }
+}

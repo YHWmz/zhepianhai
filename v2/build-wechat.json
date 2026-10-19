@@ -1,0 +1,31 @@
+{
+  "name": "这片海我包了",
+  "platform": "wechatgame",
+  "buildPath": "project://build",
+  "outputName": "wechatgame",
+  "startScene": "cbfa65de-2f71-42f5-ab08-6af893d47252",
+  "scenes": [
+    {
+      "url": "db://assets/scenes/Harbor.scene",
+      "uuid": "cbfa65de-2f71-42f5-ab08-6af893d47252"
+    }
+  ],
+  "debug": false,
+  "packages": {
+    "wechatgame": {
+      "appid": "wxa6a73c8cb709e3df",
+      "orientation": "portrait"
+    }
+  },
+  "includeModules": [
+    "base",
+    "gfx-webgl",
+    "gfx-webgl2",
+    "2d",
+    "ui",
+    "graphics",
+    "tween",
+    "profiler"
+  ],
+  "md5Cache": false
+}
