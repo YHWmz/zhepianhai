@@ -1,0 +1,19 @@
+# Machine-local files and credentials
+.DS_Store
+.env
+.env.*
+!.env.example
+project.private.config.json
+*.log
+
+# Dependencies and reproducible build output
+node_modules/
+dist/
+coverage/
+
+# Local publishing work, internal handoffs and design drafts
+publishing/
+concepts/
+WECHAT-HANDOFF.txt
+ship-log.md
+/*.png

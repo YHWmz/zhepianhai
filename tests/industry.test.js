@@ -1,0 +1,21 @@
+const test=require('node:test'),assert=require('node:assert/strict'),C=require('../src/core');
+const now=1000000;
+function setup(){const s=C.fresh(now);s.camp.stage=2;for(const k in s.resources)s.resources[k]=200;for(const [kind,plot] of [['puffer',5],['manatee',6],['eel',9]])assert.ok(C.act(s,{type:'build',kind,plot},now).ok);return s;}
+test('workshop construction locks before milestones without charging',()=>{const s=C.fresh(now),before={...s.resources};assert.equal(C.act(s,{type:'build',kind:'puffer',plot:5},now).ok,false);assert.deepEqual(s.resources,before);});
+test('manual batches spend exactly once, finish once offline and do not auto-consume',()=>{const s=setup(),water=s.resources.water;assert.ok(C.act(s,{type:'batch',id:1},now).ok);assert.equal(s.resources.water,water-2);assert.equal(C.act(s,{type:'batch',id:1},now).ok,false);assert.equal(C.act(s,{type:'upgrade',id:1},now).ok,false);C.advance(s,now+3600000);assert.equal(s.buildings[0].pending,3);assert.equal(s.buildings[0].batch,false);assert.equal(s.resources.water,water-2);assert.ok(C.valid(s));});
+test('power expiration and save reload preserve a partially processed batch',()=>{const s=setup();s.buildings[2].fuelUntil=now+5000;C.act(s,{type:'power',id:1},now);C.act(s,{type:'batch',id:1},now);C.advance(s,now+4000);const loaded=C.deserialize(C.serialize(s),now+4000);assert.ok(loaded);const stepped=JSON.parse(JSON.stringify(loaded));C.advance(loaded,now+15000);for(let t=now+5000;t<=now+15000;t+=1000)C.advance(stepped,t);assert.deepEqual(loaded,stepped);assert.equal(loaded.buildings[0].pending,3);});
+test('full output, missing inputs and stale contracts cannot consume inventory',()=>{const s=setup();s.buildings[0].pending=9;const before={...s.resources};assert.equal(C.act(s,{type:'batch',id:1},now).ok,false);assert.deepEqual(s.resources,before);s.resources.oxygen=0;const water=s.resources.water;assert.equal(C.act(s,{type:'batch',id:2},now).ok,false);assert.equal(s.resources.water,water);s.resources.oxygen=10;s.resources.resin=10;assert.ok(C.act(s,{type:'contract',index:0},now).ok);const paid={...s.resources};assert.equal(C.act(s,{type:'contract',index:0},now).ok,false);assert.deepEqual(s.resources,paid);});
+test('collect-all records every resource correctly and handles a full warehouse',()=>{const s=setup();s.buildings[0].pending=3;s.buildings[1].pending=2;s.resources.oxygen=499;assert.ok(C.act(s,{type:'collectAll'},now).ok);assert.equal(s.resources.oxygen,500);assert.equal(s.buildings[0].pending,2);assert.equal(s.stats.oxygenCollected,1);assert.equal(s.stats.resinCollected,2);assert.equal(s.stats.fishCollected,0);});
+test('v0.4 saves migrate new inventory and statistics without losing prior state',()=>{const s=C.fresh(now);s.camp.stage=2;s.resources.coins=77;delete s.resources.oxygen;delete s.resources.resin;for(const k of ['oxygenCollected','resinCollected','contracts'])delete s.stats[k];const loaded=C.deserialize(C.serialize(s),now);assert.equal(loaded.resources.coins,77);assert.equal(loaded.camp.stage,2);assert.equal(loaded.resources.oxygen,0);assert.equal(loaded.stats.contracts,0);loaded.resources.resin=-1;assert.equal(C.deserialize(C.serialize(loaded),now),null);});
+test('all seventeen goals and industry delivery are reachable without resource injection',()=>{const s=C.fresh(now);for(let i=0;i<600&&s.quest<17;i++){
+ const t=now+i*20000;C.advance(s,t);C.act(s,{type:'salvage'},t);C.act(s,{type:'collectAll'},t);
+ if(C.questDone(s))C.act(s,{type:'quest'},t);
+ for(const [kind,plot] of [['filter',5],['fishery',6],['eel',9],['puffer',7],['manatee',10]])if(!s.buildings.some(b=>b.type===kind))C.act(s,{type:'build',kind,plot},t);
+ const f=s.buildings.find(b=>b.type==='filter'),e=s.buildings.find(b=>b.type==='eel');
+ if(e&&!s.stats.fed)C.act(s,{type:'feed',id:e.id},t);if(e&&f&&!s.stats.powered)C.act(s,{type:'power',id:f.id},t);
+ if(f&&f.level<2&&s.stats.orders)C.act(s,{type:'upgrade',id:f.id},t);
+ C.act(s,{type:'camp',stage:s.camp.stage},t);
+ for(const b of s.buildings)if(C.DEFINITIONS[b.type].recipe&&s.resources.water>=12)C.act(s,{type:'batch',id:b.id},t);
+ C.act(s,{type:'contract',index:s.stats.contracts},t);
+ if(s.resources.coins<160)C.act(s,{type:'order'},t);
+ }assert.equal(s.quest,17);assert.ok(s.stats.contracts>=1);assert.ok(C.valid(s));});

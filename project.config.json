@@ -1,0 +1,97 @@
+{
+  "description": "这片海我包了 · 怪人营地 | 微信小游戏 v1.2.0",
+  "projectname": "这片海我包了",
+  "compileType": "game",
+  "appid": "wxa6a73c8cb709e3df",
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": true,
+    "postcss": false,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "enhance": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "packOptions": {
+    "ignore": [
+      {
+        "value": "tests",
+        "type": "folder"
+      },
+      {
+        "value": "tools",
+        "type": "folder"
+      },
+      {
+        "value": "index.html",
+        "type": "file"
+      },
+      {
+        "value": "README.md",
+        "type": "file"
+      },
+      {
+        "value": "preview.png",
+        "type": "file"
+      },
+      {
+        "value": "portrait.png",
+        "type": "file"
+      },
+      {
+        "value": "crew-preview.png",
+        "type": "file"
+      },
+      {
+        "value": "camp-preview.png",
+        "type": "file"
+      },
+      {
+        "value": "workshop-preview.png",
+        "type": "file"
+      },
+      {
+        "value": "manatee-preview.png",
+        "type": "file"
+      },
+      {
+        "value": "assets/PROMPTS-v5.md",
+        "type": "file"
+      },
+      {
+        "value": "assets/PROMPTS-v4.md",
+        "type": "file"
+      },
+      {
+        "value": "assets/PROMPTS.md",
+        "type": "file"
+      },
+      {
+        "value": "package.json",
+        "type": "file"
+      },
+      {
+        "type": "folder",
+        "value": "dist"
+      }
+    ],
+    "include": []
+  },
+  "simulatorPluginLibVersion": {},
+  "isGameTourist": false,
+  "editorSetting": {}
+}
