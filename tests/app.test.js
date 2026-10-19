@@ -134,12 +134,26 @@ test('tower camera moves continuously before release, clamps both ends, and clip
  assert.equal(h.app.snapshot().tower.seen.length,0);
 });
 
-test('island UI completes three scenes, changes pose and leaves without losing choices',()=>{
+test('island scene completes through world hotspots, departure and persistent choices',()=>{
  const s=Core.fresh(1700000000000);s.introSeen=true;s.camp.stage=3;s.home.rooms=Core.ROOMS.map(r=>r.id);s.home.resident=true;
  const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]));h.tick(100);
- h.click('发现基博岛 · 靠岸');h.click('让鲨鱼海楼靠岸');h.click('岛主变脸');assert.equal(h.app.uiSnapshot().chiefCheeky,true);
- h.click('先听岛民说说');h.click('继续岛上的小事');h.click('请螃蟹搬个家');h.click('继续岛上的小事');h.click('尝一口海盐怪饮');
- assert.equal(h.app.snapshot().island.choices.length,3);h.click('回忆 1');assert.match(h.app.uiSnapshot().islandLine,/大婶/);
- h.click('告别岛主 · 继续航行');assert.equal(h.app.snapshot().island.docked,false);assert.equal(h.app.uiSnapshot().modal,null);
+ h.click('发现基博岛 · 靠岸');assert.equal(h.app.uiSnapshot().modal,null);assert.equal(h.app.uiSnapshot().islandTravel.kind,'arrive');
+ assert.deepEqual(h.app.hitTargets().filter(x=>x.event).map(x=>x.label),['跳过航行动画']);
+ h.tick(4300);assert.equal(h.app.uiSnapshot().islandTravel,null);
+ h.click('岛务所 · 找岛主');assert.equal(h.app.uiSnapshot().chiefCheeky,true);
+ h.click('先听岛民说说');h.click('收起小事 · 继续逛岛');h.click('公共澡堂 · 咔哒咔哒');
+ h.click('请螃蟹搬个家');h.click('收起小事 · 继续逛岛');h.click('怪饮摊 · 嘬一口');h.click('尝一口海盐怪饮');
+ assert.equal(h.app.snapshot().island.choices.length,3);h.click('岛务所 · 找岛主');h.click('回忆 1');assert.match(h.app.uiSnapshot().islandLine,/大婶/);
+ h.click('告别岛主 · 继续航行');assert.equal(h.app.snapshot().island.docked,false);assert.equal(h.app.uiSnapshot().islandTravel.kind,'depart');
+ h.click('跳过航行动画');assert.equal(h.app.uiSnapshot().islandScene,false);
  assert.equal(Core.deserialize(h.storage.get(App.SAVE_KEY),h.getNow()).island.choices.length,3);
+});
+test('island toys do not spend resources, tower swipes stay disabled, home returns keep docking',()=>{
+ const s=Core.fresh(1700000000000);s.introSeen=true;s.camp.stage=3;s.home.rooms=Core.ROOMS.map(r=>r.id);s.home.resident=true;
+ const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]),false,true);h.tick(100);h.click('发现基博岛 · 靠岸');h.click('跳过航行动画');
+ const before=h.app.snapshot().resources;h.click('点点螃蟹');h.click('岛民大婶');assert.deepEqual(h.app.snapshot().resources,before);
+ h.callbacks.gesture({phase:'start',x:200,y:400});h.callbacks.gesture({phase:'move',x:200,y:250});h.callbacks.gesture({phase:'end',x:200,y:250});h.tick(100);
+ assert.equal(h.app.uiSnapshot().towerScroll,null);assert.equal(h.app.uiSnapshot().islandScene,true);
+ h.click('返回海楼');assert.equal(h.app.snapshot().island.docked,true);h.click('基博岛 · 已靠岸');assert.equal(h.app.uiSnapshot().islandTravel,null);assert.equal(h.app.snapshot().island.visits,1);
+ const restored=harness(h.storage);restored.tick(100);assert.equal(restored.app.uiSnapshot().islandScene,true);assert.equal(restored.app.uiSnapshot().islandTravel,null);
 });

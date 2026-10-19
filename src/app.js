@@ -20,6 +20,7 @@
     const elapsed = now - state.lastTick;
     const catchup = Core.advance(state, now, true);
     const ui = {
+      islandScene:state.island.docked, islandTravel:null, islandSpot:null, islandLine:null,
       tower: state.home.rooms.includes('lookout'), floor: Math.max(3,Core.towerTop(state)), towerOverview: false, towerScroll: null, roomEffect: null,
       tab: 'home', modal: !state.introSeen ? 'welcome' : null, selected: null, buildPlot: null, moveId: null, layoutMode: false,
       toast: null, toastUntil: 0, savedAt: 0, storageError, offline: null, resetConfirm: false, lastFrame: 0, paused: false,
@@ -102,16 +103,37 @@
       }
       return result;
     }
+    function startIslandArrival(n){
+      if(ui.islandTravel)return;
+      const r=dispatch({type:'islandDock'});
+      if(r.ok){ui.modal=null;ui.islandScene=true;ui.islandLine=null;ui.islandSpot=null;ui.islandTravel={kind:'arrive',started:n};if(ui.reducedMotion)finishIslandTravel();}
+    }
+    function finishIslandTravel(){
+      if(!ui.islandTravel)return;
+      if(ui.islandTravel.kind==='depart')ui.islandScene=false;
+      ui.islandTravel=null;
+    }
     function handle(event) {
       const n=platform.now();
       switch (event.kind) {
-        case 'island':ui.modal='island';ui.islandLine=null;ui.chiefCheeky=false;break;
-        case 'islandDock':{const r=dispatch({type:'islandDock'});if(r.ok){ui.modal='island';ui.islandLine=null;}break;}
+        case 'island':
+          ui.modal=null;ui.islandScene=true;ui.islandSpot=null;ui.islandLine=null;ui.chiefCheeky=false;
+          if(Core.islandReady(state,n))startIslandArrival(n);
+          break;
+        case 'islandHome':if(!ui.islandTravel){ui.islandScene=false;ui.islandSpot=null;ui.islandLine=null;}break;
+        case 'islandSkip':finishIslandTravel();break;
+        case 'islandSpot':{
+          if(!state.island.docked||ui.islandTravel)break;
+          ui.islandSpot=event.spot;ui.islandLine=null;ui.chiefCheeky=event.spot==='chief'?!ui.chiefCheeky:false;
+          ui.islandEffect={spot:event.spot,until:n+2200};
+          break;
+        }
+        case 'islandDock':startIslandArrival(n);break;
         case 'chiefPose':ui.chiefCheeky=!ui.chiefCheeky;break;
-        case 'islandChoice':{const r=dispatch({type:'islandChoice',step:state.island.choices.length,choice:event.choice});if(r.ok){ui.islandLine=r.islandLine;ui.chiefCheeky=true;}break;}
-        case 'islandNext':ui.islandLine=null;ui.chiefCheeky=false;break;
+        case 'islandChoice':{if(ui.islandTravel||ui.islandSpot!==['chief','bath','drinks'][state.island.choices.length])break;const r=dispatch({type:'islandChoice',step:state.island.choices.length,choice:event.choice});if(r.ok){ui.islandLine=r.islandLine;ui.chiefCheeky=true;}break;}
+        case 'islandNext':ui.islandLine=null;ui.islandSpot=null;ui.chiefCheeky=false;break;
         case 'islandReplay':ui.islandLine=Core.ISLAND_STEPS[event.step].replies[state.island.choices[event.step]];ui.chiefCheeky=true;break;
-        case 'islandLeave':{const r=dispatch({type:'islandLeave'});if(r.ok)ui.modal=null;break;}
+        case 'islandLeave':{if(ui.islandTravel)break;const r=dispatch({type:'islandLeave'});if(r.ok){ui.modal=null;ui.islandSpot=null;ui.islandLine=null;ui.islandTravel={kind:'depart',started:n};if(ui.reducedMotion)finishIslandTravel();}break;}
         case 'tales': ui.taleResult=null;ui.modal='tales';break;
         case 'episodeOpen': ui.episode=event.index;ui.taleReplay=null;ui.taleResult=null;ui.modal='episode';break;
         case 'episodeChoose': {const result=dispatch({type:'episode',episode:ui.episode,step:state.tales.choices[ui.episode].length,choice:event.choice});if(result.ok){ui.taleResult=result.taleLine;ui.taleActedAt=n;ui.sceneReply={line:result.taleLine,until:n+6000};}break;}
@@ -193,7 +215,7 @@
         case 'confirmUpgrade': if (dispatch({ type: 'upgrade', id: ui.selected }).ok) ui.modal = null; break;
         case 'resetAsk': ui.resetConfirm = true; break;
         case 'resetCancel': ui.resetConfirm = false; break;
-        case 'reset': ui.tower=false;ui.floor=3;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect=null;ui.photo=false;ui.gesture=null;ui.storyResult=null;ui.sceneReply=null;ui.buildAnimationUntil=0;ui.crewReaction=null;state = Core.fresh(numericNow()); ui.selected = null; ui.moveId = null; ui.tab = 'home'; ui.modal = 'welcome'; ui.resetConfirm = false; save(); break;
+        case 'reset': ui.islandScene=false;ui.islandTravel=null;ui.islandSpot=null;ui.islandLine=null;ui.tower=false;ui.floor=3;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect=null;ui.photo=false;ui.gesture=null;ui.storyResult=null;ui.sceneReply=null;ui.buildAnimationUntil=0;ui.crewReaction=null;state = Core.fresh(numericNow()); ui.selected = null; ui.moveId = null; ui.tab = 'home'; ui.modal = 'welcome'; ui.resetConfirm = false; save(); break;
         case 'plot': {
           const b = state.buildings.find(x => x.plot === event.plot);
           if (ui.moveId) {
@@ -253,6 +275,7 @@
         if (n - ui.lastFrame >= 30) {
           const building=state.tower.construction&&state.tower.construction.id;
           Core.advance(state, n);
+          if(ui.islandTravel&&n-ui.islandTravel.started>=4200)finishIslandTravel();
           if(building&&!state.tower.construction){const room=Core.SKY_ROOMS.find(r=>r.id===building);ui.tower=true;ui.floor=room.floor;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect={id:building,until:n+6000};toast(room.name+'落成！点房间看看邻居');save();}
           if (n - lastSave > 5000) save();
           if(n>ui.nextVignette&&!ui.modal&&!ui.photo){const i=Core.nextAntic(state);ui.sceneReply={line:Core.ANTICS[i][3],until:n+5000};ui.nextVignette=n+18000;}
@@ -276,7 +299,7 @@
     }
     if(platform.onWheel)platform.onWheel(e=>{
       const p=point(e.x,e.y);
-      if(ui.tab!=='home'||!ui.tower||ui.modal||ui.photo||ui.layoutMode||p.x<12||p.x>342||p.y<184||p.y>553)return false;
+      if(ui.islandScene||ui.tab!=='home'||!ui.tower||ui.modal||ui.photo||ui.layoutMode||p.x<12||p.x>342||p.y<184||p.y>553)return false;
       scrollTower(View.towerCamera(Core,state,ui).scroll+e.delta/transform.scale);return true;
     });
     if(platform.onGesture){
@@ -288,7 +311,7 @@
       platform.onGesture(e=>{
         const p=point(e.x,e.y);
         if(e.phase==='start'){
-          const h=targetAt(p.x,p.y);const towerSwipe=ui.tab==='home'&&ui.tower&&!ui.modal&&!ui.photo&&!ui.layoutMode&&p.x<342&&p.y>=184&&p.y<=553;down=h||towerSwipe?{h,x:p.x,y:p.y,towerSwipe,scroll:towerSwipe?View.towerCamera(Core,state,ui).scroll:0,dragged:false}:null;
+          const h=targetAt(p.x,p.y);const towerSwipe=!ui.islandScene&&ui.tab==='home'&&ui.tower&&!ui.modal&&!ui.photo&&!ui.layoutMode&&p.x<342&&p.y>=184&&p.y<=553;down=h||towerSwipe?{h,x:p.x,y:p.y,towerSwipe,scroll:towerSwipe?View.towerCamera(Core,state,ui).scroll:0,dragged:false}:null;
           if(h&&h.event&&h.event.kind==='gestureStart')ui.gesture={x:p.x,y:p.y,started:platform.now()};
         }else if(e.phase==='move'&&down&&down.towerSwipe&&!ui.gesture){
           if(Math.abs(p.y-down.y)>8||down.dragged){panTower(p);}
