@@ -690,7 +690,7 @@
       wrap('设备暂存之外，还有独立的离线补给箱。满仓未领取的补给会保留；手动加工只完成已投料的一批。', 35, y + 286, 315, 12, C.mute, 22);
       button(35,690,320,34,'统一收取补给',{kind:'action',action:{type:'collectAll'}},'primary');button(35,746,320,44,'看看我的家园',{kind:'close'},'secondary');
     } else if (type === 'settings') {
-      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.2.0', 35, y + 74, 127);
+      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.2.1', 35, y + 74, 127);
       wrap('这是一个本地经营原型。设备自然生产、供电加速、商船订单、扩建和升级均可游玩。', 35, y + 121, 314, 14, C.mute, 25);
       wrap('进度只保存在当前设备的本地存储。尚未接入账号、云存档、广告或支付。仓库每种资源上限 500。', 35, y + 213, 314, 13, C.mute, 23);
       button(35,643,320,28,state.life.sound?'音效：开启':'音效：关闭',{kind:'action',action:{type:'sound'}},'secondary');
@@ -717,35 +717,66 @@
     if(r.id==='rooftop'){for(let j=0;j<5;j++)ellipse(-50+j*24,-35,2.5,3.5,'#ffe5a0');if(active){text('♪',20+p*5,-12,20,'#ffe8a7');ellipse(0,7,8,4,'#eff1e888');}}
     ctx.restore();
   }
+  function towerCamera(Core,state,ui){
+    const levels=Math.max(Core.towerTop(state),Core.towerReach(state)),height=80+levels*126+155;
+    const full=ui.towerOverview||ui.photo,scale=full?Math.min(1,365/height):1;
+    const target=80+(levels-Math.max(1,Math.min(levels,ui.floor||levels)))*126-80;
+    const maxScroll=Math.max(0,height-369),scroll=Math.max(0,Math.min(maxScroll,Number.isFinite(ui.towerScroll)?ui.towerScroll:target));
+    return {levels,height,maxScroll,scroll,scale,ox:12+(330-330*scale)/2,oy:full?186:184-scroll};
+  }
   function towerScene(Core,state,ui,t,now){
-    const top=Core.towerTop(state),reach=Core.towerReach(state),focus=Math.min(reach,Math.max(1,ui.floor||top)),full=ui.towerOverview||ui.photo;
+    const top=Core.towerTop(state),reach=Core.towerReach(state),focus=Math.min(reach,Math.max(1,ui.floor||top)),full=ui.towerOverview||ui.photo,camera=towerCamera(Core,state,ui);
     const active=ui.roomEffect&&ui.roomEffect.until>now?ui.roomEffect.id:null;
-    if(!ui.photo){text('这栋海楼我盖了',20,148,18,'#fff1ce','800');text(full?'整栋全景 · 等比例展示':'上下滑动看楼 · 点房间直接互动',20,172,11,'#cbece6');}
+    if(!ui.photo){text('这栋海楼我盖了',20,148,18,'#fff1ce','800');text(full?'整栋全景 · 等比例展示':'拖动画面看整栋 · 点房间直接互动',20,172,11,'#cbece6');}
     const first=hits.length;ctx.save();ctx.beginPath();ctx.rect(12,184,330,369);ctx.clip();
-    const scale=full?Math.min(1,350/(top*108+80)):1,ox=full?175-158*scale:15,oy=full?196:200;
+    const {scale,ox,oy,levels}=camera;
     ctx.translate(ox,oy);ctx.scale(scale,scale);
-    const floorY=f=>full?(top-f)*108+68:(focus-f)*108+30;
-    const show=full?Array.from({length:top},(_,i)=>top-i):[focus,focus-1,focus-2].filter(f=>f>=1);
+    const floorY=f=>80+(levels-f)*126,base=80+levels*126;
+    // The hull, structural wall and roof share one world-space camera.
+    if(assets.shark){ctx.save();ctx.beginPath();ctx.rect(-15,base-8,350,158);ctx.clip();ctx.drawImage(assets.shark,-15,base-195,350,350);ctx.restore();}
+    else{ellipse(154,base+55,170,65,'#658e90','#e4b875');poly([[0,base+45],[20,base+98],[90,base+100]],'#d9d0aa');ellipse(64,base+42,10,10,'#ffdb80');}
+    rr(-5,base-9,322,18,2,'#a97742','#f0c77f');
+    for(let j=0;j<8;j++)line([[8+j*41,base-8],[8+j*41,base+6]],'#5e4836',2);
+    rr(5,80,300,levels*126,1,'#294c4d');
+    for(let x=12;x<305;x+=18)line([[x,80],[x,base]],x%3?'#45615a':'#56716a',1);
+    for(const x of [4,153,306]){rr(x-4,72,9,base-72,1,'#634632','#c39b62');}
+    const show=Array.from({length:levels},(_,i)=>levels-i);
     for(const f of show){
       const y=floorY(f),newRooms=Core.SKY_ROOMS.filter(r=>r.floor===f),swap=state.tower.swapped.includes(f);
-      line([[7,y+12],[7,y+106],[306,y+106],[306,y+12]],'#896546',6);line([[5,y+106],[310,y+106]],'#dbb17b',7);line([[7,y+26],[306,y+26]],'#8d6b4a',3);text(f+'F',16,y+17,10,'#ffe7aa','700');
-      line([[152,y+22],[152,y+106]],'#b78b59',4);for(let j=0;j<6;j++)line([[150,y+30+j*12],[161,y+30+j*12]],'#e5c188',2);
-      line([[313,y+25],[313,y+104]],'#76b3ac',3);
-      if(f<=2){[0,1].forEach((j)=>{roomSprite(f===1?j+1:j+3,j*155,y,151,106);crewSprite((f===1?['crewTank','crewBoss']:['crewWire','crewDiver'])[j],j*155+54,y+103,40,false,t);if(!full)hit(j*155,y,151,106,{kind:'rooms'},f===1?(j?'改造厨房':'改造卧室'):(j?'改造客厅':'改造客房'));});}
+      rr(8,y+6,294,117,1,'#355450');
+      for(let j=0;j<6;j++)line([[9,y+18+j*18],[301,y+18+j*18]],'#45645b',1);
+      line([[7,y+12],[7,y+126],[306,y+126],[306,y+12]],'#896546',6);line([[5,y+126],[310,y+126]],'#dbb17b',7);line([[7,y+26],[306,y+26]],'#8d6b4a',3);text(f+'F',16,y+17,10,'#ffe7aa','700');
+      line([[152,y+22],[152,y+126]],'#b78b59',4);for(let j=0;j<6;j++)line([[150,y+30+j*12],[161,y+30+j*12]],'#e5c188',2);
+      line([[313,y+25],[313,y+124]],'#76b3ac',3);
+      if(f<=2){[0,1].forEach((j)=>{roomSprite(f===1?j+1:j+3,j*155,y,151,126);crewSprite((f===1?['crewTank','crewBoss']:['crewWire','crewDiver'])[j],j*155+54,y+123,40,false,t);if(!full)hit(j*155,y,151,126,{kind:'rooms'},f===1?(j?'改造厨房':'改造卧室'):(j?'改造客厅':'改造客房'));});}
       newRooms.forEach((r,j)=>{
         const x=r.floor===6?0:(swap?1-j:j)*155,w=r.floor===6?310:151,done=state.tower.rooms.includes(r.id),job=state.tower.construction&&state.tower.construction.id===r.id?state.tower.construction:null;
-        if(done){skyRoomSprite(r,x,y,w,106,t,active===r.id);const who=r.who==='crewAuthor'&&!state.life.author?'crewWire':r.who;if(r.id==='rooftop'&&(active===r.id||ui.photo)){Core.residents(state).forEach((person,i)=>crewSprite(person,x+57+i*44,y+103,36,true,t));}else crewSprite(who,x+w*.3,y+103,active===r.id?53:45,active===r.id,t);}
-        else if(job){const progress=Math.min(1,(now-job.startedAt)/(job.endsAt-job.startedAt));ctx.save();ctx.globalAlpha=.25;skyRoomSprite(r,x,y,w,106,t,false);ctx.restore();ctx.save();ctx.beginPath();ctx.rect(x,y+106*(1-progress),w,106*progress);ctx.clip();skyRoomSprite(r,x,y,w,106,t,false);ctx.restore();line([[x+w*.5,y-10],[x+w*.5,y+35]],'#e4c18b',2);icon('crate',x+w*.5,y+40+(frameUi.reducedMotion?0:Math.sin(t*2)*5),28);text((progress<.3?'吊框架':progress<.8?'搬家具':'住户上楼')+' '+Math.round(progress*100)+'%',x+w*.5,y+87,11,'#fff5ce','800','center');}
+        if(done){skyRoomSprite(r,x,y,w,126,t,active===r.id);const who=r.who==='crewAuthor'&&!state.life.author?'crewWire':r.who;if(r.id==='rooftop'&&(active===r.id||ui.photo)){Core.residents(state).forEach((person,i)=>crewSprite(person,x+57+i*44,y+123,36,true,t));}else crewSprite(who,x+w*.3,y+123,active===r.id?53:45,active===r.id,t);}
+        else if(job){const progress=Math.min(1,(now-job.startedAt)/(job.endsAt-job.startedAt));ctx.save();ctx.globalAlpha=.25;skyRoomSprite(r,x,y,w,126,t,false);ctx.restore();ctx.save();ctx.beginPath();ctx.rect(x,y+126*(1-progress),w,126*progress);ctx.clip();skyRoomSprite(r,x,y,w,126,t,false);ctx.restore();line([[x+w*.5,y-10],[x+w*.5,y+35]],'#e4c18b',2);icon('crate',x+w*.5,y+40+(frameUi.reducedMotion?0:Math.sin(t*2)*5),28);text((progress<.3?'吊框架':progress<.8?'搬家具':'住户上楼')+' '+Math.round(progress*100)+'%',x+w*.5,y+87,11,'#fff5ce','800','center');}
         else {rr(x+7,y+15,w-14,104,8,'#173c4880','#b4c7b480');text('＋',x+w/2,y+49,25,'#ffe2a3','700','center');text(r.name,x+w/2,y+79,11,'#fff2cf','700','center');text('点此查看扩建',x+w/2,y+99,9,'#b8dbd4','400','center');}
-        if(!full)hit(x,y,w,106,{kind:'skyRoom',id:r.id},(done?'走进':'扩建')+r.name);
+        if(!full)hit(x,y,w,126,{kind:'skyRoom',id:r.id},(done?'走进':'扩建')+r.name);
       });
-      if(f===1){for(let j=0;j<8;j++)ellipse(20+j*39,y+119,17,10,'#213f4b','#90b7b8');}
+
+      // Shared projecting eave/slab: upper floor loads sit on the lower room walls.
+      poly([[-3,y+2],[304,y+2],[316,y+13],[4,y+13]],'#b28555','#e0bc80');
+      rr(4,y+13,312,7,1,'#6b4a32');
+      for(let j=0;j<12;j++)line([[8+j*25,y+3],[17+j*25,y+12]],'#725239',1);
+      for(const x of [8,153,302]){rr(x-3,y+20,6,106,1,'#8d6842');ellipse(x,y+26,1.7,1.7,'#e7bc70');}
+      if(f>1){line([[-3,y+22],[-3,y+124],[-13,y+124]],'#a98958',3);for(let j=0;j<8;j++)line([[-13,y+30+j*12],[-3,y+30+j*12]],'#d6b681',2);}
       if(state.home.rooms.includes('lights'))for(let j=0;j<5;j++)ellipse(27+j*62,y+16,2,3,'#ffe4a3');
     }
-    if(full||focus>=top){const y=floorY(top);roomSprite(5,110,y-72,100,75);}
+    // One pitched roof crowns the building; the lighthouse rests on its right ridge.
+    poly([[-13,81],[38,42],[270,42],[326,81]],'#8b7866','#dfb77a');
+    for(let j=0;j<15;j++){const x=38+j*16;line([[x,43],[x+12,78]],j%2?'#ac8a66':'#546d70',6);}
+    if(assets.rooms){const im=assets.rooms;ctx.save();poly([[-13,81],[38,42],[270,42],[326,81]],null,null);ctx.clip();ctx.drawImage(im,30*im.width/1254,20*im.height/1254,570*im.width/1254,90*im.height/1254,-13,35,339,54);ctx.restore();}
+    line([[-13,81],[326,81]],'#e2b574',6);rr(-10,83,333,9,1,'#67472f');
+    roomSprite(5,215,-2,87,57);
+    for(const x of [231,284])line([[x,49],[x,59]],'#9a7045',3);
+
     ctx.restore();
     // Convert scene-local hitboxes using exactly the same camera transform, then clip.
     for(let i=first;i<hits.length;i++){const h=hits[i];h.x=ox+h.x*scale;h.y=oy+h.y*scale;h.w*=scale;h.h*=scale;const right=Math.min(342,h.x+h.w),bottom=Math.min(553,h.y+h.h);h.x=Math.max(12,h.x);h.y=Math.max(184,h.y);h.w=Math.max(0,right-h.x);h.h=Math.max(0,bottom-h.y);}
+    for(let i=hits.length-1;i>=first;i--)if(hits[i].w<=0||hits[i].h<=0)hits.splice(i,1);
     if(ui.photo)return;
     for(let f=1;f<=6;f++)button(347,210+(6-f)*46,31,34,String(f)+'F',{kind:'floor',value:f},focus===f&&!full?'primary':'secondary',f<=reach);
     const job=state.tower.construction,selected=Core.SKY_ROOMS.find(r=>r.id===(active||ui.skyRoom)&&state.tower.rooms.includes(r.id)),reply=selected?(active?selected.reply:'查看「'+selected.name+'」的入住小事'):null;
@@ -951,5 +982,5 @@
     }
     ctx.restore(); return hits;
   }
-  return { draw, setAssets };
+  return { draw, setAssets, towerCamera };
 });

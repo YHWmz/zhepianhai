@@ -20,7 +20,7 @@
     const elapsed = now - state.lastTick;
     const catchup = Core.advance(state, now, true);
     const ui = {
-      tower: state.home.rooms.includes('lookout'), floor: Math.max(3,Core.towerTop(state)), towerOverview: false, roomEffect: null,
+      tower: state.home.rooms.includes('lookout'), floor: Math.max(3,Core.towerTop(state)), towerOverview: false, towerScroll: null, roomEffect: null,
       tab: 'home', modal: !state.introSeen ? 'welcome' : null, selected: null, buildPlot: null, moveId: null, layoutMode: false,
       toast: null, toastUntil: 0, savedAt: 0, storageError, offline: null, resetConfirm: false, lastFrame: 0, paused: false,
       effects: [], artLoaded: 0, artFailed: [], reducedMotion: platform.reducedMotion,
@@ -159,13 +159,13 @@
           else handle({kind:'facility',value:event.value});
           break;
         case 'workshopPage': ui.workshopPage=event.value; break;
-        case 'towerEnter': ui.tower=true;ui.floor=Math.max(3,Core.towerTop(state));ui.selected=null;ui.modal=null;break;
+        case 'towerEnter': ui.tower=true;ui.floor=Math.max(3,Core.towerTop(state));ui.towerScroll=null;ui.selected=null;ui.modal=null;break;
         case 'towerExit': ui.tower=false;ui.selected=null;break;
         case 'towerOverview': ui.towerOverview=!ui.towerOverview;break;
-        case 'floor': if(event.value<=Core.towerReach(state)){ui.floor=event.value;ui.towerOverview=false;}else toast('建好当前楼层后，就能向上扩建');break;
+        case 'floor': if(event.value<=Core.towerReach(state)){ui.floor=event.value;ui.towerScroll=null;ui.towerOverview=false;}else toast('建好当前楼层后，就能向上扩建');break;
         case 'skyRoom': ui.skyRoom=event.id;if(state.tower.rooms.includes(event.id)){if(dispatch({type:'towerPlay',id:event.id}).ok)ui.roomEffect={id:event.id,until:n+6000};}else ui.modal='skyRoom';break;
         case 'skyRoomDetail': ui.skyRoom=event.id||ui.skyRoom;ui.modal='skyRoom';break;
-        case 'towerBuild': if(dispatch({type:'towerBuild',id:event.id}).ok){ui.modal=null;ui.tower=true;ui.towerOverview=false;ui.floor=Core.SKY_ROOMS.find(r=>r.id===event.id).floor;}break;
+        case 'towerBuild': if(dispatch({type:'towerBuild',id:event.id}).ok){ui.modal=null;ui.tower=true;ui.towerOverview=false;ui.floor=Core.SKY_ROOMS.find(r=>r.id===event.id).floor;ui.towerScroll=null;}break;
         case 'towerPlay': if(dispatch({type:'towerPlay',id:event.id}).ok){ui.roomEffect={id:event.id,until:n+6000};}break;
         case 'towerSwap': dispatch({type:'towerSwap',floor:event.floor});break;
         case 'rooms': ui.roomIndex=Math.min(state.home.rooms.length,Core.ROOMS.length-1);ui.modal='rooms'; break;
@@ -185,7 +185,7 @@
         case 'confirmUpgrade': if (dispatch({ type: 'upgrade', id: ui.selected }).ok) ui.modal = null; break;
         case 'resetAsk': ui.resetConfirm = true; break;
         case 'resetCancel': ui.resetConfirm = false; break;
-        case 'reset': ui.tower=false;ui.floor=3;ui.towerOverview=false;ui.roomEffect=null;ui.photo=false;ui.gesture=null;ui.storyResult=null;ui.sceneReply=null;ui.buildAnimationUntil=0;ui.crewReaction=null;state = Core.fresh(numericNow()); ui.selected = null; ui.moveId = null; ui.tab = 'home'; ui.modal = 'welcome'; ui.resetConfirm = false; save(); break;
+        case 'reset': ui.tower=false;ui.floor=3;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect=null;ui.photo=false;ui.gesture=null;ui.storyResult=null;ui.sceneReply=null;ui.buildAnimationUntil=0;ui.crewReaction=null;state = Core.fresh(numericNow()); ui.selected = null; ui.moveId = null; ui.tab = 'home'; ui.modal = 'welcome'; ui.resetConfirm = false; save(); break;
         case 'plot': {
           const b = state.buildings.find(x => x.plot === event.plot);
           if (ui.moveId) {
@@ -245,7 +245,7 @@
         if (n - ui.lastFrame >= 30) {
           const building=state.tower.construction&&state.tower.construction.id;
           Core.advance(state, n);
-          if(building&&!state.tower.construction){const room=Core.SKY_ROOMS.find(r=>r.id===building);ui.tower=true;ui.floor=room.floor;ui.towerOverview=false;ui.roomEffect={id:building,until:n+6000};toast(room.name+'落成！点房间看看邻居');save();}
+          if(building&&!state.tower.construction){const room=Core.SKY_ROOMS.find(r=>r.id===building);ui.tower=true;ui.floor=room.floor;ui.towerScroll=null;ui.towerOverview=false;ui.roomEffect={id:building,until:n+6000};toast(room.name+'落成！点房间看看邻居');save();}
           if (n - lastSave > 5000) save();
           if(n>ui.nextVignette&&!ui.modal&&!ui.photo){const i=Core.nextAntic(state);ui.sceneReply={line:Core.ANTICS[i][3],until:n+5000};ui.nextVignette=n+18000;}
           render(n);
@@ -261,18 +261,34 @@
       return null;
     }
     const point=(x,y)=>({x:(x-transform.x)/transform.scale,y:(y-transform.y)/transform.scale});
+    function scrollTower(value){
+      ui.towerOverview=false;const c=View.towerCamera(Core,state,ui);
+      ui.towerScroll=Math.max(0,Math.min(c.maxScroll,value));
+      ui.floor=Math.max(1,Math.min(c.levels,Math.round(c.levels-ui.towerScroll/126)));
+    }
+    if(platform.onWheel)platform.onWheel(e=>{
+      const p=point(e.x,e.y);
+      if(ui.tab!=='home'||!ui.tower||ui.modal||ui.photo||ui.layoutMode||p.x<12||p.x>342||p.y<184||p.y>553)return false;
+      scrollTower(View.towerCamera(Core,state,ui).scroll+e.delta/transform.scale);return true;
+    });
     if(platform.onGesture){
       let down=null;
+      function panTower(p){
+        down.dragged=true;scrollTower(down.scroll+down.y-p.y);
+      }
+
       platform.onGesture(e=>{
         const p=point(e.x,e.y);
         if(e.phase==='start'){
-          const h=targetAt(p.x,p.y);const towerSwipe=ui.tab==='home'&&ui.tower&&!ui.modal&&!ui.photo&&!ui.layoutMode&&p.x<342&&p.y>=184&&p.y<=553;down=h||towerSwipe?{h,x:p.x,y:p.y,towerSwipe}:null;
+          const h=targetAt(p.x,p.y);const towerSwipe=ui.tab==='home'&&ui.tower&&!ui.modal&&!ui.photo&&!ui.layoutMode&&p.x<342&&p.y>=184&&p.y<=553;down=h||towerSwipe?{h,x:p.x,y:p.y,towerSwipe,scroll:towerSwipe?View.towerCamera(Core,state,ui).scroll:0,dragged:false}:null;
           if(h&&h.event&&h.event.kind==='gestureStart')ui.gesture={x:p.x,y:p.y,started:platform.now()};
+        }else if(e.phase==='move'&&down&&down.towerSwipe&&!ui.gesture){
+          if(Math.abs(p.y-down.y)>8||down.dragged){panTower(p);}
         }else if(e.phase==='move'&&ui.gesture){ui.gesture.x=p.x;ui.gesture.y=p.y;}
         else if(e.phase==='cancel'){down=null;ui.gesture=null;}
         else if(e.phase==='end'){
           if(ui.gesture){const g=ui.gesture;ui.gesture=null;if(ui.modal==='interact'&&(ui.interact==='puffer'?platform.now()-g.started>=1200&&p.x>=75&&p.x<=315&&p.y>=335&&p.y<=625:Math.hypot(p.x-260,p.y-440)<90))finishInteraction();else toast(ui.interact==='puffer'?'按住 1.2 秒再松开，也可以点下方按钮':'把材料拖到右侧虚线圈里');}
-          else if(down&&down.towerSwipe&&Math.abs(p.y-down.y)>45){ui.floor=Math.max(1,Math.min(Core.towerReach(state),(ui.floor||2)+(p.y>down.y?1:-1)));ui.towerOverview=false;}
+          else if(down&&down.towerSwipe&&(down.dragged||Math.abs(p.y-down.y)>8)){panTower(p);}
           else if(down&&down.h){const h=targetAt(p.x,p.y);if(h&&h.event&&JSON.stringify(h.event)===JSON.stringify(down.h.event)&&Math.hypot(p.x-down.x,p.y-down.y)<24)handle(h.event);}
           down=null;
         }

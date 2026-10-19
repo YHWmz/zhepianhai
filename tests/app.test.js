@@ -122,3 +122,14 @@ test('building completion moves camera to new floor, saves and exposes story det
  const s=Core.fresh(1700000000000);s.introSeen=true;s.camp.stage=3;s.home.rooms=Core.ROOMS.map(r=>r.id);s.home.resident=true;for(const k in s.resources)s.resources[k]=200;
  const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]));h.click('扩建海景泡泡浴室');h.click('开工 · 海景泡泡浴室');assert.ok(h.app.snapshot().tower.construction);h.tick(13000);assert.deepEqual(h.app.snapshot().tower.rooms,['bath']);assert.equal(h.app.uiSnapshot().floor,3);h.click('查看房间小事');assert.equal(h.app.uiSnapshot().skyRoom,'bath');h.click('关闭弹窗');assert.ok(Core.deserialize(h.storage.get(App.SAVE_KEY),h.getNow()));
 });
+test('tower camera moves continuously before release, clamps both ends, and clips offscreen room hits',()=>{
+ const s=Core.fresh(1700000000000);s.introSeen=true;s.camp.stage=3;s.home.rooms=Core.ROOMS.map(r=>r.id);s.home.resident=true;s.tower.rooms=Core.SKY_ROOMS.map(r=>r.id);
+ const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]),false,true);h.click('6F');
+ h.callbacks.gesture({phase:'start',x:120,y:350});h.callbacks.gesture({phase:'move',x:120,y:327});h.tick(100);assert.equal(h.app.uiSnapshot().towerScroll,23);
+ h.callbacks.gesture({phase:'move',x:120,y:279});h.tick(100);assert.equal(h.app.uiSnapshot().towerScroll,71);assert.equal(h.app.snapshot().tower.seen.length,0);
+ h.callbacks.gesture({phase:'end',x:120,y:279});h.tick(100);assert.equal(h.app.uiSnapshot().towerScroll,71);
+ h.callbacks.gesture({phase:'start',x:120,y:350});h.callbacks.gesture({phase:'end',x:120,y:-2000});h.tick(100);const ui=h.app.uiSnapshot(),c=View.towerCamera(Core,h.app.snapshot(),ui);assert.equal(ui.towerScroll,c.maxScroll);
+ const hits=h.app.hitTargets().filter(h=>h.event&&h.event.kind==='skyRoom');assert.ok(hits.every(h=>h.w>0&&h.h>0&&h.y>=184&&h.y+h.h<=553));assert.ok(!hits.some(h=>h.event.id==='rooftop'));
+ h.callbacks.gesture({phase:'start',x:120,y:350});h.callbacks.gesture({phase:'end',x:120,y:2000});h.tick(100);assert.equal(h.app.uiSnapshot().towerScroll,0);
+ assert.equal(h.app.snapshot().tower.seen.length,0);
+});
