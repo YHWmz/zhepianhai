@@ -133,3 +133,13 @@ test('tower camera moves continuously before release, clamps both ends, and clip
  h.callbacks.gesture({phase:'start',x:120,y:350});h.callbacks.gesture({phase:'end',x:120,y:2000});h.tick(100);assert.equal(h.app.uiSnapshot().towerScroll,0);
  assert.equal(h.app.snapshot().tower.seen.length,0);
 });
+
+test('island UI completes three scenes, changes pose and leaves without losing choices',()=>{
+ const s=Core.fresh(1700000000000);s.introSeen=true;s.camp.stage=3;s.home.rooms=Core.ROOMS.map(r=>r.id);s.home.resident=true;
+ const h=harness(new Map([[App.SAVE_KEY,Core.serialize(s)]]));h.tick(100);
+ h.click('发现基博岛 · 靠岸');h.click('让鲨鱼海楼靠岸');h.click('岛主变脸');assert.equal(h.app.uiSnapshot().chiefCheeky,true);
+ h.click('先听岛民说说');h.click('继续岛上的小事');h.click('请螃蟹搬个家');h.click('继续岛上的小事');h.click('尝一口海盐怪饮');
+ assert.equal(h.app.snapshot().island.choices.length,3);h.click('回忆 1');assert.match(h.app.uiSnapshot().islandLine,/大婶/);
+ h.click('告别岛主 · 继续航行');assert.equal(h.app.snapshot().island.docked,false);assert.equal(h.app.uiSnapshot().modal,null);
+ assert.equal(Core.deserialize(h.storage.get(App.SAVE_KEY),h.getNow()).island.choices.length,3);
+});

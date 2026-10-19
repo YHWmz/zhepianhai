@@ -56,6 +56,13 @@
   ];
   const SOUVENIRS=[['coffeeSign','今日怪饮招牌',5,'今日特饮：老板也在试喝。'],['foamCup','泡沫纪念杯',2,'杯子很轻，泡沫很有想法。'],['oddHat','章鱼队长帽',0,'队长允许大家倒着戴。'],['lostSign','漂流旧招牌',4,'木头慢慢捞，笑话天天有。'],['dinnerBell','开饭小铜铃',3,'一响就有人带碗出现。'],['tableFlower','聚餐小花瓶',1,'给一起吃饭的人留一个位置。']];
   for(const [id,name,slot,reply] of SOUVENIRS)DECOR.push({id,name,slot,reply});
+  const ISLAND_STEPS = [
+    {title:'欢迎词还没说完',line:'岛主扶正眼镜：“各位远道而来，先解决岛民洗热水澡的问题。”他忽然凑近：“来都来了……不得泡一泡？”',choices:['先听岛民说说','看看坏掉的管道'],replies:['大婶把发言稿卷成喇叭：“先修澡堂！”岛主立刻记下：“收到，讲话压缩到三句。”','管道里卡着一只偷泡澡的螃蟹。岛主眯眼：“藏得挺深啊，小东西。”']},
+    {title:'正经维修，不正经解说',line:'岛主卷起西装袖子亲自帮忙：“热水必须送到每户。”又小声补一句：“管子通不通，得慢慢摸清楚。”',choices:['请螃蟹搬个家','敲管子把它哄出来'],replies:['你给螃蟹换了个茶壶。岛主认真挂牌：“临时安置房，不收房租。”','岛主带头敲出舞曲，螃蟹横着跳出来。他偷笑：“扭得比我还放得开。”']},
+    {title:'全岛第一杯热水',line:'热水终于来了。岛民把第一杯递给岛主，他转手让给了老人。随后端出海盐怪饮：“别光看颜色，先嘬一口。”',choices:['尝一口海盐怪饮','给大家拍张纪念照'],replies:['咸得眉毛都立起来了！岛主挤眼：“够不够味？我亲手调的。”岛民笑着送你一面感谢旗。','快门一响，岛主正经站好；下一秒又对镜头挑眉。大家笑着把“正经办事”感谢旗送上你的海楼。']}
+  ];
+  function islandFresh(){return {docked:false,choices:[],visits:0,nextAt:0};}
+  function islandReady(s,now){return s.home.rooms.includes('lookout')&&!s.island.docked&&now>=s.island.nextAt;}
   function talesFresh(){return {choices:[[],[],[]],seen:[],cursor:0};}
   function episodeReady(s,i){return i===0?s.life.author&&s.buildings.some(b=>b.type==='puffer'):i===1?s.salvager.built:i===2?s.home.rooms.includes('kitchen')&&s.camp.meals>0:false;}
   function anticReady(s,i){const k=ANTICS[i][2];return k==='always'||k==='author'&&s.life.author||k==='salvage'&&s.salvager.built||s.buildings.some(b=>b.type===k);}
@@ -214,7 +221,7 @@
     return {
       version: VERSION, lastTick: now, createdAt: now,
       resources: { wood: 16, metal: 6, water: 0, fish: 0, coins: 20, oxygen: 0, resin: 0, mortar: 0 },
-      salvager: salvagerFresh(), life: lifeFresh(), tales: talesFresh(), tower: towerFresh(),
+      salvager: salvagerFresh(), life: lifeFresh(), tales: talesFresh(), tower: towerFresh(), island: islandFresh(),
       plots: [5, 6, 7, 9, 10, 11], buildings: [], nextId: 1,
       salvage: 3, salvageProgress: 0, quest: 0, order: 0, introSeen: false,
       camp: { stage: 0, meals: 0, nextMealAt: 0 }, home: homeFresh(),
@@ -304,6 +311,20 @@
   function act(state, action, now) {
     advance(state, now);
     switch (action.type) {
+      case 'islandDock': {
+        if(!islandReady(state,now))return fail('灯塔建成后，等航线再次经过基博岛');
+        state.island.docked=true;state.island.visits++;return success('已靠岸 · 基博岛主来迎接了');
+      }
+      case 'islandChoice': {
+        const q=state.island;
+        if(!q.docked||q.choices.length>=3||action.step!==q.choices.length||!integer(action.choice,0,1))return fail('这段靠岛故事已经记下了');
+        const step=ISLAND_STEPS[q.choices.length];q.choices.push(action.choice);
+        return {ok:true,message:q.choices.length===3?'获得纪念：正经办事感谢旗':'岛主记住了你的帮忙',islandLine:step.replies[action.choice]};
+      }
+      case 'islandLeave': {
+        if(!state.island.docked)return fail('海楼正在航行');
+        state.island.docked=false;state.island.nextAt=now+300000;return success('再次启航 · 故事进度已保留');
+      }
       case 'episode': {
         if(!integer(action.episode,0,2)||!integer(action.choice,0,1))return fail('无效的故事选择');
         const i=action.episode,e=EPISODES[i],progress=state.tales.choices[i];
@@ -575,6 +596,11 @@
       if(q.built&&(!s.home||!s.home.rooms.includes('roof')))return false;
       if(q.pending===SALVAGER.capacity&&q.progress!==0)return false;
     }
+    if(s.island!==undefined){const q=s.island;
+      if(!q||typeof q.docked!=='boolean'||!Array.isArray(q.choices)||q.choices.length>3||!q.choices.every(x=>integer(x,0,1))||!integer(q.visits,0,1e8)||!Number.isFinite(q.nextAt)||q.nextAt<0)return false;
+      if((q.docked||q.choices.length||q.visits)&&(!s.home||!s.home.rooms.includes('lookout')))return false;
+      if((q.docked||q.choices.length)&&!q.visits)return false;
+    }
     if(s.tales!==undefined){const t=s.tales;
       if(!t||!Array.isArray(t.choices)||t.choices.length!==3||!t.choices.every(a=>Array.isArray(a)&&a.length<=3&&a.every(x=>integer(x,0,1)))||!Array.isArray(t.seen)||t.seen.length>8||new Set(t.seen).size!==t.seen.length||!t.seen.every(x=>integer(x,0,7))||!integer(t.cursor,0,7))return false;
     }
@@ -620,9 +646,11 @@
       if (!s.life) s.life = lifeFresh(2);
       if (!s.tales) s.tales = talesFresh();
       if (!s.tower) s.tower = towerFresh();
+      if (!s.island) s.island = islandFresh();
       // Clock rollback must not freeze the entire village until a future date.
       if (s.lastTick > now) {
         const delta = s.lastTick - now;
+        s.island.nextAt=Math.max(0,s.island.nextAt-delta);
         for (const b of s.buildings) if (b.type === 'eel') b.fuelUntil = Math.max(0, b.fuelUntil - delta);
         if (s.home.construction) { s.home.construction.startedAt = Math.max(0, s.home.construction.startedAt-delta); s.home.construction.endsAt = s.home.construction.startedAt+ROOMS.find(r=>r.id===s.home.construction.id).seconds*1000; }
         if(s.tower.construction){const c=s.tower.construction;c.startedAt=Math.max(0,c.startedAt-delta);c.endsAt=c.startedAt+SKY_ROOMS.find(r=>r.id===c.id).seconds*1000;}
@@ -632,5 +660,5 @@
       return s;
     } catch (_) { return null; }
   }
-  return { SKY_ROOMS, towerFresh, towerReady, towerTop, towerReach, EPISODES, ANTICS, SOUVENIRS, talesFresh, episodeReady, anticReady, nextAntic, nextEpisode, DECOR, STORIES, VIGNETTES, OFFLINE_CAP, story, storyReady, storyHint, SALVAGER, residents, salvagerAmount, woodEstimate, ROOMS, roomReady, mealReward, CONTRACTS, unlocked, CAMP_PROJECTS, campReady, VERSION, CAP, OFFLINE_MAX, RESOURCE_NAMES, DEFINITIONS, ORDER_LIST, QUESTS, fresh, costText, afford, amount, capacity, upgradeCost, expansionCost, expandable, power, advance, questDone, act, getBuilding, valid, serialize, deserialize };
+  return { ISLAND_STEPS, islandFresh, islandReady, SKY_ROOMS, towerFresh, towerReady, towerTop, towerReach, EPISODES, ANTICS, SOUVENIRS, talesFresh, episodeReady, anticReady, nextAntic, nextEpisode, DECOR, STORIES, VIGNETTES, OFFLINE_CAP, story, storyReady, storyHint, SALVAGER, residents, salvagerAmount, woodEstimate, ROOMS, roomReady, mealReward, CONTRACTS, unlocked, CAMP_PROJECTS, campReady, VERSION, CAP, OFFLINE_MAX, RESOURCE_NAMES, DEFINITIONS, ORDER_LIST, QUESTS, fresh, costText, afford, amount, capacity, upgradeCost, expansionCost, expandable, power, advance, questDone, act, getBuilding, valid, serialize, deserialize };
 });

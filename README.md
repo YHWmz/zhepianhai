@@ -1,3 +1,7 @@
+# v1.3 基博岛靠岸
+
+新增一个轻量岛屿故事和双姿态岛主。建好灯塔后从海楼的「发现基博岛 · 靠岸」进入，完成三段小事获得屋顶感谢旗；五分钟后可回访。独立体验 `demo-v13.html` 不改正式存档。详情见 `docs/ISLAND-V13.md`。
+
 # 这片海我包了
 
 仓库：[YHWmz/zhepianhai](https://github.com/YHWmz/zhepianhai)。`main` 跟随最新版本，`v1.2.1` 保存当前快照（`v1.2` 保留首版），`v1-plus` 保留原版。分支约定、本地启动、微信构建与 Cloudflare Pages 配置见 [VERSIONING.md](VERSIONING.md)。

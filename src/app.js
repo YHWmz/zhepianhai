@@ -45,6 +45,7 @@
     }
     if(platform.loadImage)for(const kind of ['author','decor'])loadArt('assets/'+kind+'-v10.png').then(img=>{View.setAssets({[kind]:img});ui.artLoaded++;}).catch(()=>ui.artFailed.push(kind));
     if(platform.loadImage)loadArt('assets/skyrooms-v12.png').then(img=>{View.setAssets({skyrooms:img});ui.artLoaded++;}).catch(()=>ui.artFailed.push('skyrooms'));
+    if(platform.loadImage)loadArt('assets/chief-v13.png').then(img=>{View.setAssets({chief:img});ui.artLoaded++;}).catch(()=>ui.artFailed.push('chief'));
     function toast(message) { ui.toast = message; ui.toastUntil = platform.now() + 3300; }
     function save() {
       try {
@@ -104,6 +105,13 @@
     function handle(event) {
       const n=platform.now();
       switch (event.kind) {
+        case 'island':ui.modal='island';ui.islandLine=null;ui.chiefCheeky=false;break;
+        case 'islandDock':{const r=dispatch({type:'islandDock'});if(r.ok){ui.modal='island';ui.islandLine=null;}break;}
+        case 'chiefPose':ui.chiefCheeky=!ui.chiefCheeky;break;
+        case 'islandChoice':{const r=dispatch({type:'islandChoice',step:state.island.choices.length,choice:event.choice});if(r.ok){ui.islandLine=r.islandLine;ui.chiefCheeky=true;}break;}
+        case 'islandNext':ui.islandLine=null;ui.chiefCheeky=false;break;
+        case 'islandReplay':ui.islandLine=Core.ISLAND_STEPS[event.step].replies[state.island.choices[event.step]];ui.chiefCheeky=true;break;
+        case 'islandLeave':{const r=dispatch({type:'islandLeave'});if(r.ok)ui.modal=null;break;}
         case 'tales': ui.taleResult=null;ui.modal='tales';break;
         case 'episodeOpen': ui.episode=event.index;ui.taleReplay=null;ui.taleResult=null;ui.modal='episode';break;
         case 'episodeChoose': {const result=dispatch({type:'episode',episode:ui.episode,step:state.tales.choices[ui.episode].length,choice:event.choice});if(result.ok){ui.taleResult=result.taleLine;ui.taleActedAt=n;ui.sceneReply={line:result.taleLine,until:n+6000};}break;}

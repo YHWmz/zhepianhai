@@ -555,9 +555,11 @@
     let y = (type === 'portrait' || type === 'crew' || type === 'camp' || type === 'rooms' || type === 'salvager' || type === 'source') ? 230 : type === 'build' ? 308 : type === 'welcome' ? 246 : type === 'settings' ? 340 : 398;
     if(['story','author','decor','visitor','interact'].includes(type))y=215;
     if(type==='skyRoom')y=215;
+    if(type==='island')y=150;
     if(['tales','episode','antic'].includes(type))y=185;
     const h = 814 - y; panel(14, y, 362, h); rr(173, y + 10, 44, 4, 2, '#d3dfd0');
     if (type !== 'welcome') { text('×', 348, y + 34, 24, C.mute, '400', 'center'); hit(326, y + 15, 44, 44, { kind: 'close' }, '关闭弹窗'); }
+    if(type==='island'){islandModal(Core,state,ui,now);return;}
     if(type==='skyRoom'){skyRoomModal(Core,state,ui,now);return;}
     if(['tales','episode','antic'].includes(type)){talesModal(Core,state,ui,now);return;}
     if(['story','author','decor','visitor','interact'].includes(type)){lifeModal(Core,state,ui,now);return;}
@@ -690,7 +692,7 @@
       wrap('设备暂存之外，还有独立的离线补给箱。满仓未领取的补给会保留；手动加工只完成已投料的一批。', 35, y + 286, 315, 12, C.mute, 22);
       button(35,690,320,34,'统一收取补给',{kind:'action',action:{type:'collectAll'}},'primary');button(35,746,320,44,'看看我的家园',{kind:'close'},'secondary');
     } else if (type === 'settings') {
-      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.2.1', 35, y + 74, 127);
+      text('这片海我包了', 34, y + 43, 21, C.ink, '600'); badge('怪人营地 · v1.3.0', 35, y + 74, 127);
       wrap('这是一个本地经营原型。设备自然生产、供电加速、商船订单、扩建和升级均可游玩。', 35, y + 121, 314, 14, C.mute, 25);
       wrap('进度只保存在当前设备的本地存储。尚未接入账号、云存档、广告或支付。仓库每种资源上限 500。', 35, y + 213, 314, 13, C.mute, 23);
       button(35,643,320,28,state.life.sound?'音效：开启':'音效：关闭',{kind:'action',action:{type:'sound'}},'secondary');
@@ -771,6 +773,7 @@
     if(assets.rooms){const im=assets.rooms;ctx.save();poly([[-13,81],[38,42],[270,42],[326,81]],null,null);ctx.clip();ctx.drawImage(im,30*im.width/1254,20*im.height/1254,570*im.width/1254,90*im.height/1254,-13,35,339,54);ctx.restore();}
     line([[-13,81],[326,81]],'#e2b574',6);rr(-10,83,333,9,1,'#67472f');
     roomSprite(5,215,-2,87,57);
+    if(state.island.choices.length===3){rr(115,90,76,28,2,'#9c3932');text('正经办事',153,109,13,'#ffe5a5','700','center');}
     for(const x of [231,284])line([[x,49],[x,59]],'#9a7045',3);
 
     ctx.restore();
@@ -785,7 +788,8 @@
     button(18,594,112,26,full?'返回近景':'整栋看看',{kind:'towerOverview'},'secondary');
     button(138,594,113,26,'免费左右换位',{kind:'towerSwap',floor:focus},'secondary');
     button(259,594,113,26,'设备甲板',{kind:'towerExit'},'secondary');
-    button(18,628,354,32,'海上怪事 · 看看邻居们',{kind:'tales'},'primary');
+    button(18,628,172,32,'海上怪事',{kind:'tales'},'primary');
+    button(198,628,174,32,state.island.docked?'基博岛 · 已靠岸':Core.islandReady(state,now)?'发现基博岛 · 靠岸':'岛屿航线',{kind:'island'},'primary');
   }
   function skyRoomModal(Core,state,ui,now){
     const r=Core.SKY_ROOMS.find(r=>r.id===ui.skyRoom),done=state.tower.rooms.includes(r.id),job=state.tower.construction;
@@ -806,11 +810,39 @@
     for(let i=first;i<hits.length;i++)hits[i].y+=offsetY;
     if(!ui.photo&&ui.interactionSuccess&&ui.interactionSuccess.until>now)speech(ui.interactionSuccess.kind==='eel'?'嗝——来电了！':ui.interactionSuccess.kind==='puffer'?'呼！这一口，开始生产！':ui.interactionSuccess.kind==='roof'?'终于能把锅还给卷姨了！':'捞到了！今晚枕头有着落了！',195,190,'#ffe7a5',12);
   }
+  function islandModal(Core,state,ui,now){
+    const q=state.island,n=q.choices.length,step=Core.ISLAND_STEPS[Math.min(n,2)],cheeky=!!ui.chiefCheeky;
+    text('基博岛 · 两副面孔的岛主',35,195,19,C.ink,'800');
+    text(q.docked?'50 岁 · 岛务负责人 · 点他看另一面':'海楼航线 · 不限时，不消耗物资',35,222,12,C.teal);
+    rr(35,238,320,255,15,'#b8dcd6');
+    ellipse(194,440,146,34,'#d8bd7b');rr(49,415,286,36,7,'#956b46');
+    skyRoomSprite(Core.SKY_ROOMS.find(r=>r.id==='bath'),49,292,162,148,ui.reducedMotion?0:now/1000,false);crewSprite('crewBoss',97,448,100,false,0);
+    const im=assets.chief,bob=ui.reducedMotion?0:Math.sin(now/420)*2;
+    if(im){const sw=im.width/2,sh=im.height,k=Math.min(230/sw,185/sh),w=sw*k,h=sh*k;ctx.drawImage(im,cheeky?sw:0,0,sw,sh,252-w/2,465-h+bob,w,h);}
+    else {text('岛主正在整领带…',244,360,12,C.ink,'400','center');}
+    hit(162,278,178,201,{kind:'chiefPose'},'岛主变脸');
+    if(n===3){rr(59,286,100,42,3,'#9c3932');text('正经办事',109,312,17,'#ffe5a5','700','center');}
+    rr(57,247,264,29,8,'#fff2ce');text(cheeky?'“别急，容我悄悄说两句。”':'“先把岛民的事办好。”',189,266,13,C.ink,'700','center');
+    const locked=!state.home.rooms.includes('lookout'),ready=Core.islandReady(state,now);
+    const line=locked?'建好屋顶灯塔，鲨鱼海楼就能发现岛屿。':!q.docked?(ready?'远处有人举着欢迎牌。西装岛主身后，岛民正挥着澡盆求助。要靠岸看看吗？':'海楼正在下一段航线上。稍后还能回访基博岛，已有故事会保留。'):ui.islandLine||(n===3?'岛民们又来迎接你了！“正经办事”感谢旗已收藏。岛主抿了口茶：“欢迎再来泡……茶。”':step.line);
+    text(q.docked?(n===3?'岛屿纪念 · 正经办事感谢旗':step.title+'  '+(n+1)+'/3'):'偶尔靠岛 · 遇见怪人',35,518,16,C.ink,'700');
+    wrap(line,35,547,314,14,C.ink,23);
+    if(q.docked){
+      if(ui.islandLine&&n<3)button(35,659,320,42,'继续岛上的小事',{kind:'islandNext'},'primary');
+      else if(n<3)step.choices.forEach((label,i)=>button(35+i*164,659,156,44,label,{kind:'islandChoice',choice:i},'primary'));
+      else [0,1,2].forEach(i=>button(35+i*108,659,102,35,'回忆 '+(i+1),{kind:'islandReplay',step:i},'secondary'));
+      button(35,744,320,42,'告别岛主 · 继续航行',{kind:'islandLeave'},'primary');
+    }else{
+      if(ready)button(35,659,320,44,'让鲨鱼海楼靠岸',{kind:'islandDock'},'primary');
+      else text(locked?'先回家继续建楼':'预计 '+Math.ceil(Math.max(0,q.nextAt-now)/60000)+' 分钟后再次经过',195,685,13,C.teal,'600','center');
+      button(35,744,320,42,'回到海楼',{kind:'close'},'secondary');
+    }
+  }
   function talesModal(Core,state,ui,now){
     const type=ui.modal;
     if(type==='tales'){
       text('海上怪事营业中',35,229,23,C.ink,'800');
-      text('小事随经营解锁 · 不限时 · 随时重看',35,260,12,C.teal);
+      button(35,245,320,30,'岛屿航线 · 基博岛',{kind:'island'},'secondary');
       Core.EPISODES.forEach((e,i)=>{const y=286+i*87,n=state.tales.choices[i].length,ready=Core.episodeReady(state,i);
         rr(30,y,330,78,12,ready?'#e3eddf':'#ece6d9');text(e.name,43,y+23,16,C.ink,'700');
         text(n===3?'已完成 · 重看故事':ready?e.steps[n][0]+' · '+n+'/3':e.hint,43,y+53,11,C.mute);
