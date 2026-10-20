@@ -10,6 +10,6 @@
       "uuid": "cbfa65de-2f71-42f5-ab08-6af893d47252"
     }
   ],
-  "debug": true,
+  "debug": false,
   "md5Cache": false
 }

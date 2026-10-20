@@ -2,6 +2,7 @@ import { _decorator, Component, Node, Canvas, Camera, UITransform, Graphics, Col
 import { fresh, load, depart, advance, leave, interact, expand, island, ISLANDS, SAVE_KEY, VoyageState } from './Voyage';
 import { MACHINES, Machine, costText, upgradeCost, upgrade, batch, collect, feed, resume, salvage, deliver } from './Economy';
 const { ccclass } = _decorator;
+const FLOOR_HEIGHT = 104, CLOSE_SCALE = 1.23, CLOSE_BASE = -190;
 const INK = '#183e47', PAPER = '#fff0ce', GOLD = '#e9b65d';
 @ccclass('HarborGame')
 export class HarborGame extends Component {
@@ -111,62 +112,74 @@ export class HarborGame extends Component {
     }
     private roomKey(f: number, j: number) { if (f === 1 && j === 0 && this.state.keepsakes.includes('jibo'))
         return 'sky1'; return f === 2 ? (j === 0 ? 'sky0' : 'room4') : f < 2 ? 'room' + (f * 2 + j) : 'sky' + ((f - 3) * 2 + j) % 7; }
+    /** Layered timber framing keeps the house readable at room and voyage scales. */
+    private beam(parent: Node, x: number, y: number, w: number, h: number, vertical = false) {
+        const n = this.box(parent,x,y,w,h,'#3b241c',2);
+        this.box(n,-1,1,w-3,h-3,'#865338',1);
+        this.box(n,vertical?-w/2+2:0,vertical?0:h/2-2,vertical?2:w-5,vertical?h-5:2,'#c49360',0);
+        const g=this.nodeAt('WoodGrain',n).addComponent(Graphics);g.strokeColor=new Color().fromHEX('#593723');g.lineWidth=.7;
+        for(let i=0;i<3;i++){const offset=(i-1)*2;if(vertical){g.moveTo(offset,-h/2+5);g.bezierCurveTo(offset+2,-h/5,offset-2,h/5,offset,h/2-5);}else{g.moveTo(-w/2+5,offset);g.bezierCurveTo(-w/5,offset+2,w/5,offset-2,w/2-5,offset);}g.stroke();}
+        for(const sign of [-1,1]){g.fillColor=new Color().fromHEX('#252c29');g.circle(vertical?0:sign*(w/2-7),vertical?sign*(h/2-7):0,1.3);g.fill();}
+        return n;
+    }
     private buildBoat(parent: Node, scale: number, x = 0, y = 0) {
-        const n = this.nodeAt('SharkHouse', parent, x, y);
-        n.setScale(scale, scale, 1);
-        this.sprite(n, 'shark', 0, -66, 310, 150);
-        this.box(n, 0, 0, 294, 18, '#bd925e', 2);
-        for (let f = 0; f < this.state.floors; f++) {
-            const floor = this.nodeAt('Floor-' + (f + 1), n, 0, 67 + f * 116);
-            this.box(floor, 0, 0, 276, 114, '#4b6153', 1);
-            for (let j = 0; j < 2; j++) {
-                const x = j ? 67 : -67;
-                this.sprite(floor, this.roomKey(f, j), x, 0, 130, 104);
-                if (f === 2 && j === 0)
-                    this.sprite(floor, 'author', x + 22, -12, 38, 60);
-                const hit = this.nodeAt('RoomTouch', floor, x, 0);
-                hit.addComponent(UITransform).setContentSize(130, 104);
-                let startY = 0;
-                hit.on(Node.EventType.TOUCH_START, (e: EventTouch) => startY = e.getUILocation().y);
-                hit.on(Node.EventType.TOUCH_END, (e: EventTouch) => { if (this.state.phase === 'home' && Math.abs(startY - e.getUILocation().y) < 12)
-                    this.room(f, j); });
+        const n=this.nodeAt('SharkHouse',parent,x,y);n.setScale(scale,scale,1);
+        this.sprite(n,'shark',0,-64,332,158);
+        // Deck, metal saddle and angled knees visually connect the house to the shark.
+        this.box(n,0,-15,226,23,'#37413d',3);
+        for(const x of [-112,112]){const knee=this.beam(n,x,-8,10,42,true);knee.setRotationFromEuler(0,0,x<0?-24:24);}
+        for(let i=0;i<9;i++)this.beam(n,-132+i*33,1,34,15);
+        this.beam(n,0,-7,310,10);
+        for(let f=0;f<this.state.floors;f++){
+            const floor=this.nodeAt('Floor-'+(f+1),n,0,58+f*FLOOR_HEIGHT);
+            this.box(floor,0,0,292,104,'#302b24',1);
+            for(let j=0;j<2;j++){
+                const rx=j?72:-72;
+                this.box(floor,rx,0,137,96,'#564535',0);
+                this.sprite(floor,this.roomKey(f,j),rx,-1,142,106);
+                if(f===2&&j===0)this.sprite(floor,'author',rx+22,-12,38,60);
+                const hit=this.nodeAt('RoomTouch',floor,rx,0);hit.addComponent(UITransform).setContentSize(137,96);
+                let startY=0,moved=false;
+                hit.on(Node.EventType.TOUCH_START,(e:EventTouch)=>{startY=e.getUILocation().y;moved=false;});
+                hit.on(Node.EventType.TOUCH_MOVE,(e:EventTouch)=>{moved=moved||Math.abs(startY-e.getUILocation().y)>10;});
+                hit.on(Node.EventType.TOUCH_END,(e:EventTouch)=>{if(this.state.phase==='home'&&!moved&&Math.abs(startY-e.getUILocation().y)<12)this.room(f,j);});
             }
-            for (const x of [-140, 0, 140])
-                this.box(floor, x, 0, 7, 116, '#bd925e', 0);
-            this.box(floor, 0, -55, 296, 10, '#cead77', 0);
-            this.box(floor, 0, 55, 298, 7, '#694a35', 0);
+            for(const px of [-146,0,146])this.beam(floor,px,0,8,104,true);
+            this.box(floor,0,-45,298,5,'#261f19',0);
+            this.beam(floor,0,-51,306,12);
+            this.box(floor,0,-58,308,3,'#35291f',0);
+            // Small brass corner plates, brackets and a floor plaque replace flat green strips.
+            for(const px of [-138,138]){const bracket=this.beam(floor,px,36,5,24,true);bracket.setRotationFromEuler(0,0,px<0?-40:40);this.box(floor,px,-50,8,7,'#9e8960',1);}
+            const plaque=this.box(floor,0,-51,21,11,'#342d24',2);this.label(plaque,String(f+1)+'F',0,0,7,'#e4bd79',19);
         }
-        const roof = this.nodeAt('Roof', n, 0, this.state.floors * 116 + 16), g = roof.addComponent(Graphics);
-        g.fillColor = new Color().fromHEX('#754f39');
-        g.moveTo(-160, 0);
-        g.lineTo(-126, 32);
-        g.lineTo(128, 32);
-        g.lineTo(160, 0);
-        g.close();
-        g.fill();
-        g.strokeColor = new Color().fromHEX('#d3af78');
-        g.lineWidth = 4;
-        g.stroke();
-        if (this.state.keepsakes.includes('jibo')) {
-            this.label(n, '♨', 108, 160, 35);
-            this.label(n, '基博岛赠', 105, 128, 11);
+        const top=this.state.floors*FLOOR_HEIGHT+8;
+        const roof=this.nodeAt('TiledRoof',n,0,top),g=roof.addComponent(Graphics);
+        g.fillColor=new Color().fromHEX('#2f241c');g.moveTo(-163,-4);g.lineTo(-125,42);g.lineTo(125,42);g.lineTo(163,-4);g.close();g.fill();
+        // Staggered terracotta shingles follow the pitched silhouette.
+        for(let row=0;row<4;row++){
+            const yy=row*9,edge=155-row*8;
+            for(let xx=-edge;xx<edge;xx+=24){const ww=Math.min(23,edge-xx);g.fillColor=new Color().fromHEX(['#865437','#a46c45','#92603e','#b17d50'][(row+Math.floor((xx+160)/24))%4]);g.roundRect(xx,yy,ww,9,1.2);g.fill();g.strokeColor=new Color().fromHEX('#422c23');g.lineWidth=1;g.stroke();}
         }
-        if (this.state.keepsakes.includes('sail'))
-            this.label(n, '⚑', 70, this.state.floors * 116 + 66, 55);
+        this.beam(roof,0,40,253,7);this.beam(roof,0,-5,326,9);
+        // A small chimney and brass rain gutters give the silhouette a lived-in nautical character.
+        this.box(roof,94,49,21,32,'#514d43',2);this.box(roof,94,66,29,7,'#b29366',2);
+        for(const px of [-151,151]){this.beam(n,px,top-12,7,28,true);const lamp=this.nodeAt('PorchLantern',n,px,top-30);const l=lamp.addComponent(Graphics);l.fillColor=new Color(255,205,100,35);l.circle(0,0,15);l.fill();this.box(lamp,0,0,7,13,'#f7c96f',2);this.box(lamp,0,8,10,3,'#4a3925',1);}
+        if(this.state.keepsakes.includes('jibo')){const flag=this.box(n,117,136,43,20,'#344c48',2);this.label(flag,'基博岛赠',0,0,7,'#efcc83',40);}
+        if(this.state.keepsakes.includes('sail'))this.label(n,'⚑',70,top+66,55);
         return n;
     }
     private home() {
         this.label(this.screen, '木材 ' + this.state.wood + '     航海印章 ' + this.state.stamp + '/3', 0, 300, 15);
-        const scale = this.overview ? Math.min(.9, 400 / (this.state.floors * 116 + 180)) : .9;
-        this.boat = this.buildBoat(this.screen, scale, 0, this.overview ? -115 : -100 - this.floor * 104.4);
+        const scale = this.overview ? Math.min(.9, 400 / (this.state.floors * FLOOR_HEIGHT + 180)) : CLOSE_SCALE;
+        this.boat = this.buildBoat(this.screen, scale, 0, this.overview ? -115 : CLOSE_BASE - this.floor * FLOOR_HEIGHT * CLOSE_SCALE);
         const touch = this.boat;
         let start = 0, old = 0, moved = false;
-        touch.addComponent(UITransform).setContentSize(310, this.state.floors * 116 + 180);
+        touch.addComponent(UITransform).setContentSize(310, this.state.floors * FLOOR_HEIGHT + 180);
         touch.on(Node.EventType.TOUCH_START, (e: EventTouch) => { start = e.getUILocation().y; old = touch.position.y; moved = false; });
         touch.on(Node.EventType.TOUCH_MOVE, (e: EventTouch) => { if (this.overview)
             return; const d = e.getUILocation().y - start; moved = moved || Math.abs(d) > 10; if (moved)
-            touch.setPosition(0, Math.max(-100 - (this.state.floors - 3) * 104.4, Math.min(-100, old + d)), 0); });
-        touch.on(Node.EventType.TOUCH_END, () => { this.floor = Math.max(0, Math.min(this.state.floors - 3, Math.round((-100 - touch.position.y) / 104.4))); });
+            touch.setPosition(0, Math.max(235 - (this.state.floors * FLOOR_HEIGHT + 78) * CLOSE_SCALE, Math.min(CLOSE_BASE, old + d)), 0); });
+        touch.on(Node.EventType.TOUCH_END, () => { this.floor = Math.max(0, (CLOSE_BASE - touch.position.y) / (FLOOR_HEIGHT * CLOSE_SCALE)); });
         // Opaque HUD panels are drawn after the world, so tall floors never cover controls.
         this.box(this.screen, 0, 344, 390, 150, '#123e4a', 0).addComponent(BlockInputEvents);
         this.label(this.screen, '这片海我包了', 0, 389, 23);
@@ -175,7 +188,7 @@ export class HarborGame extends Component {
         this.box(this.screen, 0, -327, 390, 190, '#123e4a', 0).addComponent(BlockInputEvents);
         this.button(this.screen, this.overview ? '返回近景' : '整栋看看', -91, -264, 170, () => { this.overview = !this.overview; this.render(); }, true);
         this.button(this.screen, this.state.floors >= 5 ? '扩建 · 20木 + 2建材' : '扩建一层 · 20木', 91, -264, 170, () => { if (expand(this.state)) {
-            this.floor = this.state.floors - 3;
+            this.floor = Math.max(0, (CLOSE_BASE - 235 + (this.state.floors * FLOOR_HEIGHT + 78) * CLOSE_SCALE) / (FLOOR_HEIGHT * CLOSE_SCALE));
             this.render();
             this.toast('新楼层落成！拖动画面看看。');
         }
